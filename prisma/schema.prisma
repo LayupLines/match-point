@@ -1,0 +1,189 @@
+// Match Point - Wimbledon Survivor Tennis Game
+// Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Gender {
+  MEN
+  WOMEN
+}
+
+enum TournamentStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+}
+
+// Models
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+
+  memberships LeagueMembership[]
+  picks       Pick[]
+  standings   Standings[]
+  createdLeagues League[] @relation("LeagueCreator")
+
+  @@index([email])
+}
+
+model Tournament {
+  id        String           @id @default(cuid())
+  name      String
+  year      Int
+  gender    Gender
+  status    TournamentStatus @default(UPCOMING)
+  createdAt DateTime         @default(now())
+
+  players Player[]
+  rounds  Round[]
+  leagues League[]
+
+  @@unique([year, gender])
+  @@index([status])
+}
+
+model Round {
+  id            String   @id @default(cuid())
+  tournamentId  String
+  roundNumber   Int
+  name          String
+  requiredPicks Int
+  lockTime      DateTime
+  createdAt     DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matches    Match[]
+  picks      Pick[]
+
+  @@unique([tournamentId, roundNumber])
+  @@index([tournamentId])
+  @@index([lockTime])
+}
+
+model Player {
+  id           String   @id @default(cuid())
+  tournamentId String
+  name         String
+  seed         Int?
+  country      String?
+  createdAt    DateTime @default(now())
+
+  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matchesAsP1     Match[]    @relation("Player1")
+  matchesAsP2     Match[]    @relation("Player2")
+  matchesWon      Match[]    @relation("Winner")
+  matchesRetired  Match[]    @relation("RetiredPlayer")
+  picks           Pick[]
+
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+  @@index([seed])
+}
+
+model Match {
+  id              String    @id @default(cuid())
+  roundId         String
+  player1Id       String
+  player2Id       String
+  winnerId        String?
+  isWalkover      Boolean   @default(false)
+  retiredPlayerId String?
+  resultEnteredAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  round          Round   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  player1        Player  @relation("Player1", fields: [player1Id], references: [id])
+  player2        Player  @relation("Player2", fields: [player2Id], references: [id])
+  winner         Player? @relation("Winner", fields: [winnerId], references: [id])
+  retiredPlayer  Player? @relation("RetiredPlayer", fields: [retiredPlayerId], references: [id])
+
+  @@index([roundId])
+  @@index([winnerId])
+}
+
+model League {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  tournamentId String
+  creatorId    String
+  createdAt    DateTime @default(now())
+
+  tournament  Tournament         @relation(fields: [tournamentId], references: [id])
+  creator     User               @relation("LeagueCreator", fields: [creatorId], references: [id])
+  memberships LeagueMembership[]
+  picks       Pick[]
+  standings   Standings[]
+
+  @@index([tournamentId])
+  @@index([creatorId])
+}
+
+model LeagueMembership {
+  id       String   @id @default(cuid())
+  userId   String
+  leagueId String
+  joinedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leagueId])
+  @@index([userId])
+  @@index([leagueId])
+}
+
+model Pick {
+  id          String   @id @default(cuid())
+  userId      String
+  leagueId    String
+  roundId     String
+  playerId    String
+  submittedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  round  Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leagueId, roundId, playerId])
+  @@index([userId, leagueId])
+  @@index([roundId])
+  @@index([playerId])
+}
+
+model Standings {
+  id           String   @id @default(cuid())
+  userId       String
+  leagueId     String
+  strikes      Int      @default(0)
+  correctPicks Int      @default(0)
+  eliminated   Boolean  @default(false)
+  rank         Int?
+  lastUpdated  DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leagueId])
+  @@index([leagueId])
+  @@index([strikes])
+  @@index([eliminated])
+}
