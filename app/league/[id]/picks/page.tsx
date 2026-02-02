@@ -128,29 +128,32 @@ export default async function PicksPage({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+      <header className="bg-gradient-to-r from-wimbledon-purple to-wimbledon-green shadow-lg sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-5 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div>
               <Link
                 href={`/league/${leagueId}`}
-                className="text-sm text-blue-600 hover:underline mb-1 inline-block"
+                className="text-sm text-white/90 hover:text-white mb-2 inline-flex items-center gap-1 font-medium"
               >
                 ← Back to League
               </Link>
-              <h1 className="text-2xl font-bold text-gray-900">{round.name}</h1>
-              <p className="text-sm text-gray-600">{league.name}</p>
+              <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+                <span>🎾</span>
+                {round.name}
+              </h1>
+              <p className="text-sm text-white/80 mt-1">{league.name}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">
-                Lock Time: {new Date(round.lockTime).toLocaleString()}
+              <p className="text-sm text-white/80">
+                🕒 {new Date(round.lockTime).toLocaleString()}
               </p>
-              <p className="text-sm font-semibold text-gray-700">
+              <p className="text-lg font-bold text-white mt-1">
                 {round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required
               </p>
               {isLocked && (
-                <span className="inline-block mt-1 px-3 py-1 text-sm bg-red-200 text-red-800 rounded">
-                  Round Locked
+                <span className="inline-block mt-2 px-4 py-1 text-sm bg-status-locked text-white rounded-full font-semibold">
+                  🔒 Round Locked
                 </span>
               )}
             </div>
@@ -197,48 +200,79 @@ export default async function PicksPage({
           </div>
         ) : (
           <>
-            {/* Current Picks Summary */}
+            {/* Current Picks Summary with Progress Bar */}
             {existingPicks.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-blue-900">
+              <div className="bg-white border-2 border-wimbledon-purple/20 rounded-xl p-6 mb-6 shadow-card">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <span>📋</span>
                       Current Picks: {existingPicks.length} / {round.requiredPicks}
                     </h3>
-                    <p className="text-sm text-blue-700 mt-1">
+                    <p className="text-sm text-gray-600 mt-2">
                       {existingPicks.map((p) => p.player.name).join(', ')}
                     </p>
                   </div>
                   {existingPicks.length === round.requiredPicks && (
-                    <span className="px-3 py-1 bg-green-200 text-green-800 rounded text-sm font-semibold">
-                      Ready to submit
+                    <span className="px-4 py-2 bg-status-open text-white rounded-lg text-sm font-bold flex items-center gap-2">
+                      <span>✓</span> Complete
                     </span>
                   )}
+                </div>
+                {/* Progress Bar */}
+                <div className="mt-4">
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-wimbledon-purple to-wimbledon-green h-full transition-all duration-500 ease-out"
+                      style={{ width: `${(existingPicks.length / round.requiredPicks) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    {Math.round((existingPicks.length / round.requiredPicks) * 100)}% Complete
+                  </p>
                 </div>
               </div>
             )}
 
             {/* Instructions */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <h2 className="text-lg font-semibold mb-2">How to Pick</h2>
-              <ul className="list-disc list-inside text-gray-700 space-y-1 text-sm">
-                <li>Select exactly {round.requiredPicks} player{round.requiredPicks !== 1 ? 's' : ''} from the list below</li>
-                <li>You cannot pick players you've already used in previous rounds (marked as "Burned")</li>
-                <li>Once submitted, your picks are locked for this round</li>
-                <li>Players marked with a seed number are seeded players</li>
+            <div className="bg-gradient-to-br from-wimbledon-purple/5 to-wimbledon-green/5 rounded-xl shadow-card border border-wimbledon-purple/10 p-6 mb-6">
+              <h2 className="text-lg font-bold mb-3 text-gray-900 flex items-center gap-2">
+                <span>💡</span>
+                How to Pick
+              </h2>
+              <ul className="space-y-2 text-gray-700 text-sm">
+                <li className="flex items-start gap-2">
+                  <span className="text-wimbledon-green font-bold">•</span>
+                  <span>Select exactly {round.requiredPicks} player{round.requiredPicks !== 1 ? 's' : ''} from the list below</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-wimbledon-purple font-bold">•</span>
+                  <span>You cannot pick players you've already used in previous rounds (marked as "Burned")</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-wimbledon-green font-bold">•</span>
+                  <span>Once submitted, your picks are locked for this round</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-wimbledon-purple font-bold">•</span>
+                  <span>Players marked with a seed number are seeded players</span>
+                </li>
               </ul>
             </div>
 
             {/* Player Grid */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold">Available Players</h2>
+            <div className="bg-white rounded-xl shadow-card border border-gray-100">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <span>👥</span>
+                  Available Players
+                </h2>
                 <p className="text-sm text-gray-600 mt-1">
                   Showing {allPlayers.length} players for {league.tournament.name}
                 </p>
               </div>
               <div className="p-6">
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                   {allPlayers.map((player) => {
                     const isUsed = usedPlayerIds.has(player.id)
                     const isPicked = currentPickIds.has(player.id)
@@ -247,26 +281,33 @@ export default async function PicksPage({
                     return (
                       <div
                         key={player.id}
-                        className={`border rounded-lg p-4 transition-all ${
+                        className={`border-2 rounded-xl p-4 transition-all ${
                           isPicked
-                            ? 'border-blue-500 bg-blue-50'
+                            ? 'border-wimbledon-green bg-wimbledon-green/5 shadow-card-hover'
                             : isUsed
-                            ? 'border-gray-300 bg-gray-100 opacity-60'
-                            : 'border-gray-300 hover:border-blue-400 hover:shadow-md'
+                            ? 'border-gray-200 bg-gray-50 opacity-60'
+                            : 'border-gray-200 hover:border-wimbledon-purple hover:shadow-card-hover bg-white'
                         }`}
                       >
-                        <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                            <p className="font-semibold text-gray-900">{player.name}</p>
+                            <p className="font-bold text-gray-900 leading-tight">{player.name}</p>
                             {player.seed && (
-                              <p className="text-sm text-gray-600">Seed {player.seed}</p>
+                              <div className="inline-flex items-center gap-1 mt-1">
+                                <span className="text-xs font-semibold px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple rounded-full">
+                                  #{player.seed}
+                                </span>
+                              </div>
                             )}
-                            <p className="text-xs text-gray-500">{player.country}</p>
+                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                              <span>🌍</span>
+                              {player.country}
+                            </p>
                           </div>
-                          {isPicked && <span className="text-blue-600 text-xl">✓</span>}
+                          {isPicked && <span className="text-wimbledon-green text-2xl font-bold">✓</span>}
                           {isUsed && !isPicked && (
-                            <span className="text-xs bg-gray-400 text-white px-2 py-1 rounded">
-                              Burned
+                            <span className="text-xs bg-gray-400 text-white px-2.5 py-1 rounded-full font-semibold">
+                              🔥 Burned
                             </span>
                           )}
                         </div>
@@ -284,15 +325,15 @@ export default async function PicksPage({
                             <button
                               type="submit"
                               disabled={!isPicked && !canSelect}
-                              className={`w-full mt-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                              className={`w-full mt-3 px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm ${
                                 isPicked
-                                  ? 'bg-red-600 text-white hover:bg-red-700'
+                                  ? 'bg-red-500 text-white hover:bg-red-600 hover:shadow-md'
                                   : canSelect
-                                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  ? 'bg-wimbledon-purple text-white hover:bg-wimbledon-purple-dark hover:shadow-md'
+                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                               }`}
                             >
-                              {isPicked ? 'Remove' : 'Select'}
+                              {isPicked ? '✕ Remove' : '+ Select'}
                             </button>
                           </form>
                         )}
@@ -305,14 +346,15 @@ export default async function PicksPage({
 
             {/* Submit Notice */}
             {existingPicks.length === round.requiredPicks && (
-              <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-green-900 mb-2">
+              <div className="mt-6 bg-gradient-to-r from-status-open/10 to-wimbledon-green/10 border-2 border-status-open rounded-xl p-6 shadow-card">
+                <h3 className="text-xl font-bold text-status-open mb-2 flex items-center gap-2">
+                  <span className="text-2xl">🎉</span>
                   Picks Complete!
                 </h3>
-                <p className="text-green-700">
+                <p className="text-gray-700 leading-relaxed">
                   You've selected all {round.requiredPicks} required picks. Your picks are automatically
                   saved and will be locked when the round begins at{' '}
-                  {new Date(round.lockTime).toLocaleString()}.
+                  <span className="font-semibold text-wimbledon-purple">{new Date(round.lockTime).toLocaleString()}</span>.
                 </p>
               </div>
             )}
