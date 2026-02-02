@@ -79,30 +79,28 @@ export default async function LeaguePage({
     : []
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-wimbledon-cream">
       {/* Header */}
-      <header className="bg-gradient-to-r from-wimbledon-purple to-wimbledon-green shadow-lg">
+      <header className="bg-wimbledon-purple shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <Link href="/dashboard" className="text-sm text-white/90 hover:text-white mb-2 inline-flex items-center gap-1 font-medium">
+              <Link href="/dashboard" className="text-sm text-white/70 hover:text-white mb-3 inline-flex items-center gap-1">
                 ← Back to Dashboard
               </Link>
-              <h1 className="text-4xl font-bold text-white flex items-center gap-2">
-                <span>🏆</span>
+              <h1 className="text-3xl font-light text-white tracking-wide">
                 {league.name}
               </h1>
-              <p className="text-white/90 mt-2 text-lg">{league.description}</p>
+              <p className="text-white/70 mt-2">{league.description}</p>
             </div>
-            <div className="text-right bg-white/10 backdrop-blur-sm rounded-lg px-6 py-4">
-              <p className="text-sm text-white/80 mb-1">
+            <div className="text-right bg-white/5 px-6 py-4">
+              <p className="text-sm text-white/60 mb-1">
                 {league.tournament.name}
               </p>
-              <p className="text-2xl font-bold text-white flex items-center justify-end gap-1">
-                <span>👥</span>
+              <p className="text-2xl font-light text-white">
                 {league._count.memberships}
               </p>
-              <p className="text-xs text-white/70">members</p>
+              <p className="text-xs text-white/60 uppercase tracking-wider">Members</p>
             </div>
           </div>
         </div>
@@ -127,72 +125,58 @@ export default async function LeaguePage({
         ) : (
           <>
             {/* Tournament Rounds */}
-            <div className="bg-white rounded-xl shadow-card border border-gray-100 mb-8">
-              <div className="px-6 py-5 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <span>🎾</span>
-                  Tournament Rounds
-                </h2>
+            <div className="bg-white shadow-card mb-8">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="text-2xl font-light text-gray-900 tracking-wide">Tournament Rounds</h2>
               </div>
               <div className="p-6">
-                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {league.tournament.rounds.map((round) => {
                     const now = new Date()
                     const lockTime = new Date(round.lockTime)
                     const isLocked = lockTime < now
                     const timeUntilLock = lockTime.getTime() - now.getTime()
                     const isClosingSoon = !isLocked && timeUntilLock < 2 * 24 * 60 * 60 * 1000
-                    const isOpen = !isLocked && !isClosingSoon
 
                     return (
                       <div
                         key={round.id}
-                        className={`border-2 rounded-xl p-5 transition-all shadow-card hover:shadow-card-hover ${
+                        className={`border p-5 transition-all hover:shadow-elegant ${
                           isLocked
                             ? 'border-gray-200 bg-gray-50'
                             : isClosingSoon
-                            ? 'border-status-closing bg-status-closing/5'
-                            : 'border-status-open bg-status-open/5'
+                            ? 'border-status-closing/30 bg-white'
+                            : 'border-wimbledon-green/30 bg-white'
                         }`}
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <h3 className="font-bold text-xl text-gray-900">{round.name}</h3>
-                          {isLocked ? (
-                            <span className="text-xl">🔒</span>
-                          ) : isClosingSoon ? (
-                            <span className="text-xl">⚠️</span>
-                          ) : (
-                            <span className="text-xl">✅</span>
-                          )}
+                        <div className="mb-4">
+                          <h3 className="font-light text-lg text-gray-900 tracking-wide">{round.name}</h3>
                         </div>
-                        <p className="text-sm text-gray-700 font-medium mb-3 flex items-center gap-1">
-                          <span>📋</span>
+                        <p className="text-sm text-gray-600 mb-2">
                           {round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required
                         </p>
-                        <p className="text-sm text-gray-600 mb-4 flex items-center gap-1">
-                          <span>🕒</span>
+                        <p className="text-xs text-gray-500 mb-4">
                           {lockTime.toLocaleDateString()} at {lockTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                         </p>
                         {isLocked ? (
-                          <span className="inline-flex items-center gap-1 px-4 py-2 text-sm bg-status-locked text-white rounded-lg font-semibold">
-                            <span>🔒</span> Locked
+                          <span className="inline-block px-4 py-1.5 text-xs bg-gray-200 text-gray-600 uppercase tracking-wider">
+                            Locked
                           </span>
                         ) : (
                           <>
                             <Link
                               href={`/league/${id}/picks?round=${round.id}`}
-                              className={`inline-flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-md ${
+                              className={`inline-flex items-center justify-center w-full px-4 py-2 text-sm transition-all ${
                                 isClosingSoon
                                   ? 'bg-status-closing text-white hover:bg-status-closing/90'
-                                  : 'bg-wimbledon-purple text-white hover:bg-wimbledon-purple-dark'
+                                  : 'bg-wimbledon-green text-white hover:bg-wimbledon-green-dark'
                               }`}
                             >
-                              <span>🎯</span>
                               Make Picks
                             </Link>
                             {isClosingSoon && (
-                              <p className="text-xs text-status-closing font-semibold mt-2 text-center">
-                                ⏰ Closing Soon!
+                              <p className="text-xs text-status-closing mt-2 text-center uppercase tracking-wider">
+                                Closing Soon
                               </p>
                             )}
                           </>
@@ -205,30 +189,27 @@ export default async function LeaguePage({
             </div>
 
             {/* Standings */}
-            <div className="bg-white rounded-xl shadow-card border border-gray-100">
-              <div className="px-6 py-5 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <span>📊</span>
-                  Standings
-                </h2>
+            <div className="bg-white shadow-card">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="text-2xl font-light text-gray-900 tracking-wide">Standings</h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gradient-to-r from-wimbledon-purple/10 to-wimbledon-green/10">
+                <table className="min-w-full divide-y divide-gray-100">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                         Rank
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                         Player
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                         Strikes
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Correct Picks
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        Correct
                       </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                         Status
                       </th>
                     </tr>
@@ -236,65 +217,58 @@ export default async function LeaguePage({
                   <tbody className="bg-white divide-y divide-gray-100">
                     {standings.map((standing, index) => {
                       const isCurrentUser = standing.userId === session.user.id
-                      const isTop3 = index < 3 && !standing.eliminated
+                      const isFirst = index === 0 && !standing.eliminated
                       return (
                         <tr
                           key={standing.id}
                           className={`transition-colors ${
                             standing.eliminated
-                              ? 'bg-red-50/50'
+                              ? 'bg-red-50/30'
                               : isCurrentUser
-                              ? 'bg-wimbledon-purple/5 border-l-4 border-l-wimbledon-purple'
-                              : 'hover:bg-gray-50'
+                              ? 'bg-wimbledon-purple/5 border-l-2 border-l-wimbledon-purple'
+                              : 'hover:bg-gray-50/50'
                           }`}
                         >
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <span className={`text-lg font-bold ${
-                                isTop3 ? 'text-wimbledon-green' : 'text-gray-900'
-                              }`}>
-                                {index + 1}
-                              </span>
-                              {index === 0 && !standing.eliminated && <span className="text-xl">🥇</span>}
-                              {index === 1 && !standing.eliminated && <span className="text-xl">🥈</span>}
-                              {index === 2 && !standing.eliminated && <span className="text-xl">🥉</span>}
-                            </div>
+                            <span className={`text-sm ${
+                              isFirst ? 'font-bold text-wimbledon-green' : 'text-gray-900'
+                            }`}>
+                              {index + 1}
+                            </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-semibold text-gray-900">
+                            <span className="text-sm text-gray-900">
                               {standing.user.name}
                             </span>
                             {isCurrentUser && (
-                              <span className="ml-2 px-2 py-1 text-xs font-bold bg-wimbledon-purple text-white rounded-full">
-                                YOU
+                              <span className="ml-2 px-2 py-0.5 text-xs bg-wimbledon-purple text-white uppercase tracking-wider">
+                                You
                               </span>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`text-sm font-bold ${
+                            <span className={`text-sm ${
                               standing.strikes === 0
-                                ? 'text-status-open'
+                                ? 'text-wimbledon-green'
                                 : standing.strikes >= 2
                                 ? 'text-status-locked'
                                 : 'text-status-closing'
                             }`}>
-                              {standing.strikes === 0 ? '✓' : `⚠️ ${standing.strikes}`}
+                              {standing.strikes}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-bold text-wimbledon-green">
+                            <span className="text-sm text-gray-900">
                               {standing.correctPicks}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {standing.eliminated ? (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-status-locked text-white">
-                                <span>❌</span>
+                              <span className="inline-block px-3 py-1 text-xs bg-gray-200 text-gray-600 uppercase tracking-wider">
                                 Eliminated
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-full bg-status-open text-white">
-                                <span>✓</span>
+                              <span className="inline-block px-3 py-1 text-xs bg-wimbledon-green/10 text-wimbledon-green uppercase tracking-wider">
                                 Active
                               </span>
                             )}

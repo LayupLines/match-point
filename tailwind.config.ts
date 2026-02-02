@@ -11,30 +11,32 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        // Wimbledon brand colors
+        // Authentic Wimbledon brand colors
         wimbledon: {
           purple: {
-            DEFAULT: '#6B46C1',
-            light: '#8B5CF6',
-            dark: '#5B21B6',
+            DEFAULT: '#2E1A47', // Deep purple from logo
+            light: '#4A2E6B',
+            dark: '#1A0F2E',
           },
           green: {
-            DEFAULT: '#00A86B',
-            light: '#10B981',
-            dark: '#047857',
+            DEFAULT: '#006633', // Classic Wimbledon green
+            light: '#007A3D',
+            dark: '#004D26',
           },
+          cream: '#F5F5F0', // Off-white background
         },
-        // Enhanced status colors
+        // Refined status colors
         status: {
-          open: '#10B981',
-          closing: '#F59E0B',
-          locked: '#EF4444',
-          active: '#3B82F6',
+          open: '#007A3D', // Wimbledon green
+          closing: '#D97706', // Amber
+          locked: '#DC2626', // Red
+          active: '#2563EB', // Blue
         }
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'card': '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // Subtle Wimbledon-style shadow
+        'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        'elegant': '0 2px 8px 0 rgba(46, 26, 71, 0.08)', // Purple-tinted shadow
       },
     },
   },
