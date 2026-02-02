@@ -141,7 +141,7 @@ async function applyRankings(leagueId: string, tx: any) {
   // 1. Fewest strikes
   // 2. Most correct picks
   // 3. Earliest final round submission
-  const sorted = standings.sort((a, b) => {
+  const sorted = standings.sort((a: any, b: any) => {
     // First: fewest strikes
     if (a.strikes !== b.strikes) return a.strikes - b.strikes
 
