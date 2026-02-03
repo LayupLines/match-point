@@ -143,18 +143,13 @@ export default async function LeaguePage({
                     return (
                       <div
                         key={round.id}
-                        className={`border-2 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
+                        className={`border-2 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-in fade-in slide-in-from-bottom-4 ${
                           isLocked
                             ? 'border-gray-200 bg-gray-50/50'
                             : isClosingSoon
                             ? 'border-status-closing/40 bg-gradient-to-br from-orange-50 to-white'
                             : 'border-wimbledon-green/40 bg-gradient-to-br from-green-50 to-white'
                         }`}
-                        style={{
-                          animationDelay: `${index * 100}ms`,
-                          animation: 'fadeIn 0.5s ease-out forwards',
-                          opacity: 0
-                        }}
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
@@ -206,19 +201,6 @@ export default async function LeaguePage({
               </div>
             </div>
 
-            <style jsx>{`
-              @keyframes fadeIn {
-                from {
-                  opacity: 0;
-                  transform: translateY(20px);
-                }
-                to {
-                  opacity: 1;
-                  transform: translateY(0);
-                }
-              }
-            `}</style>
-
             {/* Standings */}
             <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
               <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
@@ -254,18 +236,13 @@ export default async function LeaguePage({
                       return (
                         <tr
                           key={standing.id}
-                          className={`transition-all duration-200 ${
+                          className={`transition-all duration-200 animate-in fade-in slide-in-from-left-2 ${
                             standing.eliminated
                               ? 'bg-red-50/30 opacity-60'
                               : isCurrentUser
                               ? 'bg-gradient-to-r from-wimbledon-purple/10 to-wimbledon-green/10 border-l-4 border-l-wimbledon-purple shadow-sm'
                               : 'hover:bg-gray-50/70'
                           }`}
-                          style={{
-                            animationDelay: `${index * 50}ms`,
-                            animation: 'fadeIn 0.4s ease-out forwards',
-                            opacity: 0
-                          }}
                         >
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
@@ -329,19 +306,6 @@ export default async function LeaguePage({
                 </table>
               </div>
             </div>
-
-            <style jsx>{`
-              @keyframes fadeIn {
-                from {
-                  opacity: 0;
-                  transform: translateX(-10px);
-                }
-                to {
-                  opacity: 1;
-                  transform: translateX(0);
-                }
-              }
-            `}</style>
           </>
         )}
       </main>

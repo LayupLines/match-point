@@ -94,12 +94,7 @@ export default async function DashboardPage() {
               <Link
                 key={league.id}
                 href={`/league/${league.id}`}
-                className="bg-white rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 p-6 group border border-gray-100 hover:border-wimbledon-green/30 hover:scale-[1.02] hover:-translate-y-1"
-                style={{
-                  animationDelay: `${index * 100}ms`,
-                  animation: 'fadeIn 0.5s ease-out forwards',
-                  opacity: 0
-                }}
+                className="bg-white rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 p-6 group border border-gray-100 hover:border-wimbledon-green/30 hover:scale-[1.02] hover:-translate-y-1 animate-in fade-in slide-in-from-bottom-4"
               >
                 <div className="mb-4 relative">
                   <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-wimbledon-purple to-wimbledon-green rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -133,19 +128,6 @@ export default async function DashboardPage() {
             ))}
           </div>
         )}
-
-        <style jsx>{`
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `}</style>
       </main>
     </div>
   )

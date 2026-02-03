@@ -290,18 +290,13 @@ export default async function PicksPage({
                     return (
                       <div
                         key={player.id}
-                        className={`rounded-xl p-4 transition-all duration-300 relative overflow-hidden ${
+                        className={`rounded-xl p-4 transition-all duration-300 relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 ${
                           isPicked
                             ? 'border-2 border-wimbledon-green bg-gradient-to-br from-wimbledon-green/10 to-wimbledon-green/5 shadow-lg scale-105'
                             : isUsed
                             ? 'border border-gray-200 bg-gray-50 opacity-50'
                             : 'border-2 border-gray-200 hover:border-wimbledon-green/50 hover:shadow-xl hover:scale-105 bg-white'
                         }`}
-                        style={{
-                          animationDelay: `${index * 30}ms`,
-                          animation: 'fadeIn 0.4s ease-out forwards',
-                          opacity: 0
-                        }}
                       >
                         {isPicked && (
                           <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-wimbledon-green/20 to-transparent rounded-bl-full"></div>
@@ -356,22 +351,6 @@ export default async function PicksPage({
                       </div>
                     )
                   })}
-                </div>
-              </div>
-            </div>
-
-            <style jsx>{`
-              @keyframes fadeIn {
-                from {
-                  opacity: 0;
-                  transform: translateY(10px);
-                }
-                to {
-                  opacity: 1;
-                  transform: translateY(0);
-                }
-              }
-            `}</style>
                 </div>
               </div>
             </div>
