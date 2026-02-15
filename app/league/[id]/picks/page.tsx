@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import Link from 'next/link'
+import { getFlagPath, getCountryName } from '@/lib/utils/country'
 
 export const runtime = 'nodejs'
 
@@ -126,7 +127,14 @@ export default async function PicksPage({
   const isEliminated = standing?.eliminated || false
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wimbledon-cream via-white to-wimbledon-cream/50">
+    <div className="min-h-screen relative">
+      {/* Grass court background */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
+        style={{ backgroundImage: 'url(/grass-court.jpg)' }}
+      />
+      {/* Semi-transparent overlay for readability */}
+      <div className="fixed inset-0 bg-white/75 -z-10" />
       {/* Header */}
       <header className="bg-gradient-to-r from-wimbledon-purple via-wimbledon-purple-dark to-wimbledon-purple shadow-lg sticky top-0 z-50 backdrop-blur-sm bg-opacity-95 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-transparent"></div>
@@ -187,7 +195,14 @@ export default async function PicksPage({
                       {pick.player.seed && (
                         <p className="text-sm text-gray-600">Seed {pick.player.seed}</p>
                       )}
-                      <p className="text-sm text-gray-500">{pick.player.country}</p>
+                      <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-1">
+                        <img
+                          src={getFlagPath(pick.player.country)}
+                          alt={getCountryName(pick.player.country)}
+                          className="w-4 h-3 object-cover rounded-sm border border-gray-200 shadow-sm"
+                        />
+                        {getCountryName(pick.player.country)}
+                      </p>
                     </div>
                     <div className="text-2xl">🎾</div>
                   </div>
@@ -310,9 +325,13 @@ export default async function PicksPage({
                                 <span>Seed {player.seed}</span>
                               </span>
                             )}
-                            <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-                              <span>🌍</span>
-                              {player.country}
+                            <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
+                              <img
+                                src={getFlagPath(player.country)}
+                                alt={getCountryName(player.country)}
+                                className="w-4 h-3 object-cover rounded-sm border border-gray-200 shadow-sm"
+                              />
+                              <span className="font-medium">{getCountryName(player.country)}</span>
                             </p>
                           </div>
                           {isPicked && <span className="text-wimbledon-green text-2xl animate-bounce">✓</span>}

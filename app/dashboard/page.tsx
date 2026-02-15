@@ -16,7 +16,14 @@ export default async function DashboardPage() {
   const leagues = await getUserLeagues(session.user.id)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wimbledon-cream via-white to-wimbledon-cream/50">
+    <div className="min-h-screen relative">
+      {/* Grass court background */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
+        style={{ backgroundImage: 'url(/grass-court.jpg)' }}
+      />
+      {/* Semi-transparent overlay for readability */}
+      <div className="fixed inset-0 bg-white/75 -z-10" />
       <header className="bg-gradient-to-r from-wimbledon-purple via-wimbledon-purple-dark to-wimbledon-purple shadow-lg sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
