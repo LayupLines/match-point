@@ -26,6 +26,16 @@ enum TournamentStatus {
   COMPLETED
 }
 
+enum TournamentLevel {
+  GRAND_SLAM
+  ATP_1000
+  ATP_500
+  ATP_250
+  WTA_1000
+  WTA_500
+  WTA_250
+}
+
 // Models
 model User {
   id        String   @id @default(cuid())
@@ -48,6 +58,7 @@ model Tournament {
   name      String
   year      Int
   gender    Gender
+  level     TournamentLevel  @default(GRAND_SLAM)
   status    TournamentStatus @default(UPCOMING)
   createdAt DateTime         @default(now())
 
@@ -55,7 +66,7 @@ model Tournament {
   rounds  Round[]
   leagues League[]
 
-  @@unique([year, gender])
+  @@unique([year, gender, level])
   @@index([status])
 }
 

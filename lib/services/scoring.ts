@@ -1,8 +1,18 @@
+// ABOUTME: Scoring engine that calculates strikes, correct picks, and eliminations after match results.
+// Handles special cases for walkovers and retirements with separate scoring rules for each scenario.
 import { db } from '@/lib/db'
 import { STRIKES_TO_ELIMINATE } from '@/lib/constants'
 
 export async function calculateScoring(tournamentId: string) {
   return await db.$transaction(async (tx) => {
+    // Determine the final round number for this tournament
+    const finalRound = await tx.round.findFirst({
+      where: { tournamentId },
+      orderBy: { roundNumber: 'desc' },
+      select: { roundNumber: true }
+    })
+    const finalRoundNumber = finalRound?.roundNumber ?? 1
+
     // Get all leagues for this tournament
     const leagues = await tx.league.findMany({
       where: { tournamentId },
@@ -79,7 +89,7 @@ export async function calculateScoring(tournamentId: string) {
           }
 
           // Track final round submission time
-          if (pick.round.roundNumber === 7) {
+          if (pick.round.roundNumber === finalRoundNumber) {
             finalRoundSubmission = pick.submittedAt
           }
         }
@@ -112,12 +122,12 @@ export async function calculateScoring(tournamentId: string) {
       }
 
       // Apply rankings with tiebreakers
-      await applyRankings(league.id, tx)
+      await applyRankings(league.id, finalRoundNumber, tx)
     }
   })
 }
 
-async function applyRankings(leagueId: string, tx: any) {
+async function applyRankings(leagueId: string, finalRoundNumber: number, tx: any) {
   // Get all standings for this league
   const standings = await tx.standings.findMany({
     where: { leagueId },
@@ -127,7 +137,7 @@ async function applyRankings(leagueId: string, tx: any) {
           picks: {
             where: {
               leagueId,
-              round: { roundNumber: 7 }
+              round: { roundNumber: finalRoundNumber }
             },
             orderBy: { submittedAt: 'asc' },
             take: 1

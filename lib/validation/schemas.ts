@@ -1,3 +1,5 @@
+// ABOUTME: Zod validation schemas for all API request bodies across auth, leagues, picks, and admin routes.
+// Import specific schemas in API route handlers to validate and type incoming request data.
 import { z } from 'zod'
 
 // Auth schemas
@@ -23,7 +25,7 @@ export const createLeagueSchema = z.object({
 export const submitPicksSchema = z.object({
   leagueId: z.string().cuid(),
   roundId: z.string().cuid(),
-  playerIds: z.array(z.string().cuid()).min(1).max(4),
+  playerIds: z.array(z.string().cuid()).min(1).max(16),
 })
 
 // Admin schemas
@@ -31,6 +33,7 @@ export const createTournamentSchema = z.object({
   name: z.string().min(3),
   year: z.number().int().min(2024).max(2100),
   gender: z.enum(['MEN', 'WOMEN']),
+  level: z.enum(['GRAND_SLAM', 'ATP_1000', 'ATP_500', 'ATP_250', 'WTA_1000', 'WTA_500', 'WTA_250']).default('GRAND_SLAM'),
 })
 
 export const enterResultSchema = z.object({
@@ -44,7 +47,7 @@ export const uploadPlayersSchema = z.object({
   tournamentId: z.string().cuid(),
   players: z.array(z.object({
     name: z.string().min(1),
-    seed: z.number().int().min(1).max(128).optional(),
+    seed: z.number().int().min(1).max(256).optional(),
     country: z.string().length(3).optional(), // ISO 3-letter code
   })),
 })

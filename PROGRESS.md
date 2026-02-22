@@ -153,6 +153,152 @@ Wimbledon Survivor tennis game built with Next.js 15, Prisma 7, NextAuth v5, and
 - Total bundle impact: ~22.5KB (negligible)
 - All flags cached by browser for performance
 
+### shadcn/ui Component Library Integration (Feb 15, 2026)
+**Feature**: Add shadcn/ui component library for consistent, accessible UI components
+**Goal**: Improve UI consistency and developer experience while preserving Wimbledon theme
+
+**Implementation**:
+- **Initialization**: Ran `npx shadcn@latest init` with New York style preset
+- **Theme Customization**: Customized CSS variables in `app/globals.css` to use Wimbledon colors:
+  - Primary: Wimbledon Purple (#2E1A47) in OKLCH format `oklch(0.25 0.08 300)`
+  - Secondary: Wimbledon Green (#006633) in OKLCH format `oklch(0.35 0.12 150)`
+  - Accent: Wimbledon Green Light (#007A3D) in OKLCH format `oklch(0.42 0.14 155)`
+  - Ring/Focus: Matches primary purple for focus states
+- **Components Installed**:
+  - Tier 1: Button, Card, Input, Label (core UI elements)
+  - Tier 2: Badge, Alert (status indicators and messages)
+- **Test Page**: Created `/test-components` page to showcase all components with Wimbledon theme
+- **Tailwind v4 Compatibility**: Fixed build error by removing invalid `@import "tw-animate-css"` line
+
+**Package Dependencies Added**:
+- `class-variance-authority` v0.7.1 - Component variant management
+- `clsx` v2.1.1 - Conditional class names
+- `tailwind-merge` v3.4.1 - Merge Tailwind classes without conflicts
+- `tailwindcss-animate` v1.0.7 - Animation utilities
+
+**Files Created**:
+- `/components/ui/button.tsx` - Button component with variants
+- `/components/ui/card.tsx` - Card component (Header, Content, Footer, Title, Description)
+- `/components/ui/input.tsx` - Form input component
+- `/components/ui/label.tsx` - Form label component
+- `/components/ui/badge.tsx` - Badge component for status indicators
+- `/components/ui/alert.tsx` - Alert component for messages
+- `/lib/utils.ts` - `cn()` utility function for merging classes
+- `/app/test-components/page.tsx` - Component showcase page
+- `components.json` - shadcn configuration file
+
+**Files Modified**:
+- `/app/globals.css` - Added shadcn CSS variables with Wimbledon color customization
+- `/package.json` - Added component library dependencies
+
+**Technical Details**:
+- Uses OKLCH color format (more modern than HSL)
+- All components automatically use Wimbledon purple for primary actions
+- CSS variables system allows global theme changes
+- Components are just TypeScript files - fully customizable
+- No CSS-in-JS or runtime overhead
+- Works seamlessly with existing Tailwind utilities
+
+**Usage Example**:
+```typescript
+import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+
+<Button>Primary Action</Button>  // Uses Wimbledon purple
+<Button variant="secondary">Secondary</Button>  // Uses Wimbledon green
+```
+
+**Future Migration Strategy**:
+- Phase 1: Login/Register pages (simple forms)
+- Phase 2: Dashboard (many cards)
+- Phase 3: Picks page (complex layouts)
+
+### Variable-Size Tournament Support (Feb 15, 2026)
+**Feature**: Make the system support tournaments of any size, not just 128-player Grand Slams
+**Motivation**: Need to support smaller events like ATP 500 (32 players, 5 rounds) alongside Grand Slams
+
+**Problem**: System had hardcoded assumptions for 7-round, 128-player Grand Slam format in 6 files:
+- `ROUND_CONFIGS` constant locked to 7 rounds
+- Scoring tiebreaker hardcoded `roundNumber === 7` for final round detection
+- Tournament unique constraint `[year, gender]` blocked multiple tournaments per year
+- Validation schemas capped picks at 4 and seeds at 128
+
+**Implementation**:
+- **Prisma Schema**: Added `TournamentLevel` enum (`GRAND_SLAM`, `ATP_1000`, `ATP_500`, `ATP_250`, `WTA_1000`, `WTA_500`, `WTA_250`), added `level` field to Tournament model, changed unique constraint to `[year, gender, level]`
+- **Round Presets**: Replaced single `ROUND_CONFIGS` with `ROUND_PRESETS` map keyed by tournament level:
+  - Grand Slam: 7 rounds, picks 4/3/2/2/1/1/1 (unchanged)
+  - ATP 1000: 7 rounds, picks 3/2/2/1/1/1/1
+  - ATP 500 / ATP 250: 5 rounds, picks 2/2/1/1/1
+  - WTA 1000: 6 rounds, picks 3/2/1/1/1/1
+  - WTA 500 / WTA 250: 5 rounds, picks 2/2/1/1/1
+- **Scoring**: Dynamic final round detection — queries max `roundNumber` per tournament instead of assuming 7
+- **Tournament Service**: `createTournament()` accepts `level` parameter, looks up correct preset
+- **Validation**: Relaxed pick max (4→16) and seed max (128→256); added `level` to tournament creation schema
+- **API**: Admin tournament creation endpoint passes `level` through
+- **Migration**: Applied `20260215000000_add_tournament_level` to production Neon DB
+
+**Files Modified**:
+- `prisma/schema.prisma` — Added `TournamentLevel` enum and `level` field
+- `lib/constants.ts` — `ROUND_PRESETS` map with `RoundConfig` type
+- `lib/services/tournament.ts` — `level` parameter in `createTournament()`
+- `lib/services/scoring.ts` — Dynamic `finalRoundNumber` in scoring and rankings
+- `lib/validation/schemas.ts` — Relaxed limits, added `level` field
+- `app/api/admin/tournaments/route.ts` — Passes `level` to service
+- `prisma/seed.ts` — Updated composite keys and imports
+
+**No UI changes needed** — pages already read round config from database dynamically.
+
+## Technical Decisions
+
+### Tournament Level System
+**Decision**: Use a `TournamentLevel` enum rather than a generic draw size
+**Rationale**: ATP 500 and ATP 250 both have 32-player draws but are distinct tournament categories. The level captures the tournament's identity, not just its size. Pick presets can differ per level even when draw sizes match.
+
+### Round Presets vs Custom Configuration
+**Decision**: Use presets keyed by tournament level, not fully custom per-tournament round configs
+**Rationale**: Presets provide sensible defaults with zero admin effort. Pick counts per round are a game balance decision that should be consistent across tournaments of the same level. Values are easy to adjust in the constants file.
+
+### Tournament Operations Admin UI (Feb 15, 2026)
+**Feature**: Full admin UI for running tournaments end-to-end (create → players → matches → activate → enter results)
+**Motivation**: Backend had working APIs but no admin interface — needed operational tooling to run a Doha ATP 500 test tournament
+
+**Architecture**:
+- Server components for pages (auth + data fetching), following the dashboard pattern
+- Client components for forms (extracted to `components/admin/`), following the login page pattern
+- Client-side `fetch()` to existing API routes for form submissions (not server actions)
+- No new shadcn components — plain HTML `<select>` for dropdowns
+- Admin layout with auth guard, nav, and grass court background
+
+**New API Routes (4 files)**:
+- `app/api/admin/tournaments/[id]/route.ts` — GET tournament detail with rounds and players
+- `app/api/admin/tournaments/[id]/status/route.ts` — PUT status transitions (UPCOMING→ACTIVE→COMPLETED)
+- `app/api/admin/tournaments/[id]/matches/route.ts` — GET pending matches, POST CSV to create matches (resolves player names to IDs, round numbers to round IDs)
+- `app/api/admin/rounds/[id]/lock-time/route.ts` — PUT lock time update per round
+
+**Admin Pages (5 files)**:
+- `app/admin/layout.tsx` — Auth guard (redirects non-admin to `/dashboard`), grass court background, purple "MATCH POINT ADMIN" header, nav links
+- `app/admin/page.tsx` — Dashboard with tournament cards (status badges, player/league counts) + create tournament form
+- `app/admin/tournaments/[id]/page.tsx` — Tournament detail with info card, status controls, round lock time editors, links to players/matches sub-pages
+- `app/admin/tournaments/[id]/players/page.tsx` — Player list table (name, seed, country) + CSV upload form
+- `app/admin/tournaments/[id]/matches/page.tsx` — Matches grouped by round (pending + completed) + CSV upload form
+- `app/admin/results/page.tsx` — Result entry page (most-used page during live tournament)
+
+**Client Components (6 files in `components/admin/`)**:
+- `create-tournament-form.tsx` — Name, year, gender, level form → POST `/api/admin/tournaments`
+- `status-controls.tsx` — UPCOMING→ACTIVE→COMPLETED buttons → PUT `.../status`
+- `lock-time-editor.tsx` — Inline datetime editor per round → PUT `.../lock-time`
+- `player-upload-form.tsx` — CSV textarea → POST `.../players`
+- `match-upload-form.tsx` — CSV textarea → POST `.../matches`
+- `result-entry-panel.tsx` — Tournament selector + pending match list + large winner buttons per match + walkover/retirement toggles. Matches disappear from list on successful result entry (client-side state update). Includes `matchId` in request body to satisfy `enterResultSchema` Zod validation quirk.
+
+**Key Design Decisions**:
+- Result entry panel uses client-side state removal (no full page refresh) for fast workflow during live tournaments
+- Match CSV upload resolves player names case-insensitively and maps round numbers to round IDs server-side
+- `parseMatchesCSV` utility (previously built but unwired) is now connected via the matches POST endpoint
+- Status controls enforce linear progression: UPCOMING → ACTIVE → COMPLETED (no backward transitions)
+
+**Verification**: `npm run build` passes with zero TypeScript errors, all routes visible in build output.
+
 ## Current Status
 - ✅ App deployed and accessible at https://match-point-delta.vercel.app
 - ✅ Database seeded with test data
@@ -160,7 +306,11 @@ Wimbledon Survivor tennis game built with Next.js 15, Prisma 7, NextAuth v5, and
 - ✅ Modern UI with animations and responsive design
 - ✅ Grass court background texture on all pages
 - ✅ Country flag graphics on player selection
+- ✅ shadcn/ui component library integrated with Wimbledon theme
+- ✅ Variable-size tournament support (Grand Slam, ATP/WTA 1000/500/250)
+- ✅ Tournament operations admin UI (create, manage players/matches, enter results)
 - ✅ All build and deployment issues resolved
 
 ## Next Steps
-TBD - Awaiting direction from Jeremy
+- Deploy admin UI to production
+- Test end-to-end with a Doha ATP 500 tournament (create → upload 32 players → upload Round 1 matches → activate → enter results)

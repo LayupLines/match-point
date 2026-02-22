@@ -1,3 +1,5 @@
+// ABOUTME: Admin API route to list all tournaments (GET) and create a new tournament with auto-generated rounds (POST).
+// Requires ADMIN role. POST validates input with createTournamentSchema and creates rounds per tournament level.
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { createTournament, getTournaments } from '@/lib/services/tournament'
@@ -41,9 +43,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { name, year, gender } = result.data
+    const { name, year, gender, level } = result.data
 
-    const tournament = await createTournament(name, year, gender)
+    const tournament = await createTournament(name, year, gender, level)
 
     return NextResponse.json({ tournament }, { status: 201 })
   } catch (error: any) {

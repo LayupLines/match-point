@@ -1,21 +1,24 @@
+// ABOUTME: Tournament service providing CRUD operations for tournaments, rounds, players, and matches.
+// Used by admin API routes and server components to manage all tournament-related data.
 import { db } from '@/lib/db'
-import { Gender, TournamentStatus } from '@prisma/client'
-import { ROUND_CONFIGS } from '@/lib/constants'
+import { Gender, TournamentLevel, TournamentStatus } from '@prisma/client'
+import { ROUND_PRESETS } from '@/lib/constants'
 
 export async function createTournament(
   name: string,
   year: number,
-  gender: Gender
+  gender: Gender,
+  level: TournamentLevel = TournamentLevel.GRAND_SLAM
 ) {
   // Check if tournament already exists
   const existing = await db.tournament.findUnique({
     where: {
-      year_gender: { year, gender }
+      year_gender_level: { year, gender, level }
     }
   })
 
   if (existing) {
-    throw new Error('Tournament already exists for this year and gender')
+    throw new Error('Tournament already exists for this year, gender, and level')
   }
 
   // Create tournament
@@ -24,14 +27,16 @@ export async function createTournament(
       name,
       year,
       gender,
+      level,
       status: TournamentStatus.UPCOMING
     }
   })
 
-  // Create rounds with default lock times (can be updated later)
+  // Create rounds from preset for this tournament level
+  const roundConfigs = ROUND_PRESETS[level]
   const baseDate = new Date(year, 5, 1) // June 1st of tournament year
 
-  for (const config of ROUND_CONFIGS) {
+  for (const config of roundConfigs) {
     const lockTime = new Date(baseDate)
     lockTime.setDate(lockTime.getDate() + (config.roundNumber - 1) * 2)
 
