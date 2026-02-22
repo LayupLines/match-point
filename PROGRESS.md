@@ -299,6 +299,25 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 **Verification**: `npm run build` passes with zero TypeScript errors, all routes visible in build output.
 
+### Admin UI Deploy to Production (Feb 21, 2026)
+**Task**: Deploy the completed admin UI to production
+**Work Done**:
+- **ABOUTME compliance**: Added 2-line `// ABOUTME:` comment headers to all 22 new/modified files per project convention (admin pages, admin components, API routes, services, validation schemas, seed file) using `sed` batch prepend
+- **Build verification**: `npm run build` passed with zero TypeScript errors; all 12 admin API routes visible in build output
+- **End-to-end verification** via dev server:
+  - Login as admin@matchpoint.com → admin dashboard loads correctly
+  - Created ATP 500 tournament → 5 rounds auto-created with correct pick presets
+  - Uploaded 8 players via CSV → player list updated
+  - Uploaded 4 matches via CSV → matches grouped by round
+  - Transitioned status UPCOMING → ACTIVE
+  - Entered match result → match disappeared client-side (no full reload)
+  - Scoring cron returns 401 (expected — requires CRON_SECRET header)
+- **PR #1**: Opened and merged `feature/shadcn-ui-integration` → `main` (38 files, 2617 insertions)
+- **Production migration**: Ran `prisma migrate deploy` against Neon — confirmed `add_tournament_level` migration already applied; no pending migrations
+- **Vercel deployment**: Triggered automatically by main branch merge
+
+**Key Fix**: Edit tool requires the target file to be Read in the **same response turn** before editing; batch file updates were done via `sed -i '' '1s/^/...\n/'` after this limitation was discovered.
+
 ## Current Status
 - ✅ App deployed and accessible at https://match-point-delta.vercel.app
 - ✅ Database seeded with test data
@@ -309,8 +328,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ shadcn/ui component library integrated with Wimbledon theme
 - ✅ Variable-size tournament support (Grand Slam, ATP/WTA 1000/500/250)
 - ✅ Tournament operations admin UI (create, manage players/matches, enter results)
+- ✅ Admin UI deployed to production (PR #1 merged, Vercel auto-deployed)
 - ✅ All build and deployment issues resolved
 
 ## Next Steps
-- Deploy admin UI to production
 - Test end-to-end with a Doha ATP 500 tournament (create → upload 32 players → upload Round 1 matches → activate → enter results)
+- Invite test users to create leagues and make picks against a real tournament
