@@ -1,9 +1,11 @@
+// ABOUTME: Database seed script that populates test data including admin and user accounts, Wimbledon 2026 tournaments, and sample leagues.
+// Run with `npx prisma db seed` to set up a local development environment.
 import 'dotenv/config'
-import { PrismaClient, Gender, Role, TournamentStatus } from '@prisma/client'
+import { PrismaClient, Gender, Role, TournamentLevel, TournamentStatus } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import { hashPassword } from '../lib/password'
-import { ROUND_CONFIGS } from '../lib/constants'
+import { ROUND_PRESETS } from '../lib/constants'
 
 // Handle both Prisma dev and production database URLs
 const databaseUrl = process.env.DATABASE_URL
@@ -116,12 +118,13 @@ async function main() {
 
   // Create Men's Wimbledon 2026
   const mensTournament = await prisma.tournament.upsert({
-    where: { year_gender: { year: 2026, gender: Gender.MEN } },
+    where: { year_gender_level: { year: 2026, gender: Gender.MEN, level: TournamentLevel.GRAND_SLAM } },
     update: {},
     create: {
       name: "Wimbledon Men's Singles 2026",
       year: 2026,
       gender: Gender.MEN,
+      level: TournamentLevel.GRAND_SLAM,
       status: TournamentStatus.UPCOMING
     }
   })
@@ -129,12 +132,13 @@ async function main() {
 
   // Create Women's Wimbledon 2026
   const womensTournament = await prisma.tournament.upsert({
-    where: { year_gender: { year: 2026, gender: Gender.WOMEN } },
+    where: { year_gender_level: { year: 2026, gender: Gender.WOMEN, level: TournamentLevel.GRAND_SLAM } },
     update: {},
     create: {
       name: "Wimbledon Women's Singles 2026",
       year: 2026,
       gender: Gender.WOMEN,
+      level: TournamentLevel.GRAND_SLAM,
       status: TournamentStatus.UPCOMING
     }
   })
@@ -144,7 +148,8 @@ async function main() {
   const baseDate = new Date(2026, 5, 29) // June 29, 2026
 
   for (const tournament of [mensTournament, womensTournament]) {
-    for (const config of ROUND_CONFIGS) {
+    const roundConfigs = ROUND_PRESETS[tournament.level]
+    for (const config of roundConfigs) {
       const lockTime = new Date(baseDate)
       lockTime.setDate(lockTime.getDate() + (config.roundNumber - 1) * 2)
 
@@ -165,7 +170,7 @@ async function main() {
         }
       })
     }
-    console.log(`Created 7 rounds for ${tournament.name}`)
+    console.log(`Created ${roundConfigs.length} rounds for ${tournament.name}`)
   }
 
   // Add players

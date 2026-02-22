@@ -79,7 +79,14 @@ export default async function LeaguePage({
     : []
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wimbledon-cream via-white to-wimbledon-cream/50">
+    <div className="min-h-screen relative">
+      {/* Grass court background */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat -z-10"
+        style={{ backgroundImage: 'url(/grass-court.jpg)' }}
+      />
+      {/* Semi-transparent overlay for readability */}
+      <div className="fixed inset-0 bg-white/75 -z-10" />
       {/* Header */}
       <header className="bg-gradient-to-r from-wimbledon-purple via-wimbledon-purple-dark to-wimbledon-purple shadow-lg relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-transparent"></div>

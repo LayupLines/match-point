@@ -1,3 +1,5 @@
+// ABOUTME: Admin API route to record a match result and immediately trigger scoring recalculation (PUT).
+// Requires ADMIN role. Accepts winnerId with optional walkover and retiredPlayerId flags.
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { scoreMatch } from '@/lib/services/scoring'
