@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { MatchUploadForm } from '@/components/admin/match-upload-form'
+import { GenerateRoundButton } from '@/components/admin/generate-round-button'
 
 export const runtime = 'nodejs'
 
@@ -41,6 +42,25 @@ export default async function MatchManagementPage({
 
   const upcomingByRound = groupByRound(upcomingMatches)
   const completedByRound = groupByRound(completedMatches)
+
+  // Determine which completed rounds can auto-generate the next round
+  const roundsWithPending = new Set(Object.keys(upcomingByRound))
+  const roundsWithMatches = new Set<string>()
+  for (const m of upcomingMatches) roundsWithMatches.add(m.round.id)
+  for (const m of completedMatches) roundsWithMatches.add(m.round.id)
+
+  const roundByNumber = new Map(
+    tournament.rounds.map(r => [r.roundNumber, r])
+  )
+
+  const generatableRounds = new Map<string, { roundId: string; nextRoundName: string }>()
+  for (const [roundName, matches] of Object.entries(completedByRound)) {
+    if (roundsWithPending.has(roundName)) continue
+    const { id, roundNumber } = matches[0].round
+    const nextRound = roundByNumber.get(roundNumber + 1)
+    if (!nextRound || roundsWithMatches.has(nextRound.id)) continue
+    generatableRounds.set(roundName, { roundId: id, nextRoundName: nextRound.name })
+  }
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
@@ -114,7 +134,17 @@ export default async function MatchManagementPage({
               <CardContent>
                 {Object.entries(completedByRound).map(([roundName, matches]) => (
                   <div key={roundName} className="mb-6 last:mb-0">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">{roundName}</h4>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h4 className="text-sm font-semibold text-gray-700">{roundName}</h4>
+                      {generatableRounds.has(roundName) && (
+                        <GenerateRoundButton
+                          tournamentId={tournament.id}
+                          roundId={generatableRounds.get(roundName)!.roundId}
+                          roundName={roundName}
+                          nextRoundName={generatableRounds.get(roundName)!.nextRoundName}
+                        />
+                      )}
+                    </div>
                     <div className="space-y-2">
                       {matches.map((match) => (
                         <div

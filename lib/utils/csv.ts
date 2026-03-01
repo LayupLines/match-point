@@ -54,10 +54,18 @@ export function parseMatchesCSV(csvText: string) {
       throw new Error(`Row ${index + 2}: Both player names are required`)
     }
 
+    const bracketPositionStr = row[3]
+    const bracketPosition = bracketPositionStr ? parseInt(bracketPositionStr, 10) : undefined
+
+    if (bracketPositionStr && isNaN(bracketPosition!)) {
+      throw new Error(`Row ${index + 2}: Invalid bracket position`)
+    }
+
     return {
       roundNumber,
       player1Name,
-      player2Name
+      player2Name,
+      bracketPosition,
     }
   })
 }

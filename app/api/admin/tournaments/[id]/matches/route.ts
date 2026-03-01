@@ -1,8 +1,8 @@
-// ABOUTME: Admin API route to list upcoming matches (GET) and create matches from CSV data (POST).
-// Requires ADMIN role. POST resolves player names and round numbers to IDs before creating each match.
+// ABOUTME: Admin API route to list pending and completed matches (GET) and create matches from CSV data (POST).
+// ABOUTME: Requires ADMIN role. POST resolves player names and round numbers to IDs before creating each match.
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { getUpcomingMatches, getTournamentById, addMatch } from '@/lib/services/tournament'
+import { getUpcomingMatches, getCompletedMatches, getTournamentById, addMatch } from '@/lib/services/tournament'
 import { parseMatchesCSV } from '@/lib/utils/csv'
 
 export const runtime = 'nodejs'
@@ -18,9 +18,12 @@ export async function GET(
     }
 
     const { id } = await params
-    const matches = await getUpcomingMatches(id)
+    const [matches, completed] = await Promise.all([
+      getUpcomingMatches(id),
+      getCompletedMatches(id),
+    ])
 
-    return NextResponse.json({ matches })
+    return NextResponse.json({ matches, completedMatches: completed })
   } catch (error) {
     console.error('Error fetching matches:', error)
     return NextResponse.json(
@@ -58,6 +61,8 @@ export async function POST(
     }
 
     const createdMatches = []
+    // Track auto-assigned bracket positions per round
+    const roundPositionCounters: Record<string, number> = {}
 
     for (const entry of matchEntries) {
       // Resolve round number to round ID
@@ -90,7 +95,16 @@ export async function POST(
         )
       }
 
-      const match = await addMatch(round.id, player1.id, player2.id)
+      // Auto-assign bracket position if not provided in CSV
+      let bracketPosition = entry.bracketPosition
+      if (bracketPosition === undefined) {
+        if (!roundPositionCounters[round.id]) {
+          roundPositionCounters[round.id] = 1
+        }
+        bracketPosition = roundPositionCounters[round.id]++
+      }
+
+      const match = await addMatch(round.id, player1.id, player2.id, bracketPosition)
       createdMatches.push(match)
     }
 

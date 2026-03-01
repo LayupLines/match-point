@@ -1,7 +1,8 @@
 // ABOUTME: Scoring engine that calculates strikes, correct picks, and eliminations after match results.
-// Handles special cases for walkovers and retirements with separate scoring rules for each scenario.
+// ABOUTME: Orchestrates database queries and delegates evaluation logic to pick-evaluation.
 import { db } from '@/lib/db'
 import { STRIKES_TO_ELIMINATE } from '@/lib/constants'
+import { evaluatePicks } from './pick-evaluation'
 
 export async function calculateScoring(tournamentId: string) {
   return await db.$transaction(async (tx) => {
@@ -50,51 +51,7 @@ export async function calculateScoring(tournamentId: string) {
           }
         })
 
-        let strikes = 0
-        let correctPicks = 0
-        let finalRoundSubmission: Date | null = null
-
-        // Evaluate each pick
-        for (const pick of picks) {
-          // Find match involving this player
-          const match = matches.find(
-            m => m.player1Id === pick.playerId || m.player2Id === pick.playerId
-          )
-
-          if (!match || !match.winnerId) continue
-
-          // Check if pick won
-          const didPlayerWin = match.winnerId === pick.playerId
-
-          if (didPlayerWin) {
-            // Player won - no strike
-            correctPicks++
-
-            // Handle walkover (opponent didn't show)
-            if (match.isWalkover) {
-              correctPicks++ // Bonus for walkover advancement
-            }
-          } else {
-            // Player lost - check if it was a retirement
-            if (match.retiredPlayerId === pick.playerId) {
-              // Picked player retired - this is a strike
-              strikes++
-            } else if (match.retiredPlayerId) {
-              // Opponent retired, picked player advanced - no strike
-              correctPicks++
-            } else {
-              // Normal loss - strike
-              strikes++
-            }
-          }
-
-          // Track final round submission time
-          if (pick.round.roundNumber === finalRoundNumber) {
-            finalRoundSubmission = pick.submittedAt
-          }
-        }
-
-        // Determine if eliminated
+        const { strikes, correctPicks } = evaluatePicks(picks, matches, finalRoundNumber)
         const eliminated = strikes >= STRIKES_TO_ELIMINATE
 
         // Upsert standings

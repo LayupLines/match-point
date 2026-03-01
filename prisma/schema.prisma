@@ -117,6 +117,7 @@ model Match {
   isWalkover      Boolean   @default(false)
   retiredPlayerId String?
   resultEnteredAt DateTime?
+  bracketPosition Int?
   createdAt       DateTime  @default(now())
 
   round          Round   @relation(fields: [roundId], references: [id], onDelete: Cascade)
@@ -125,6 +126,7 @@ model Match {
   winner         Player? @relation("Winner", fields: [winnerId], references: [id])
   retiredPlayer  Player? @relation("RetiredPlayer", fields: [retiredPlayerId], references: [id])
 
+  @@unique([roundId, bracketPosition])
   @@index([roundId])
   @@index([winnerId])
 }

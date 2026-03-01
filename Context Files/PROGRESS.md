@@ -318,6 +318,29 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 **Key Fix**: Edit tool requires the target file to be Read in the **same response turn** before editing; batch file updates were done via `sed -i '' '1s/^/...\n/'` after this limitation was discovered.
 
+### Tailwind v4 CSS Variable Fixes (Feb 22, 2026)
+**Task**: Fix two silent bugs discovered during web app review that broke shadcn/ui and Wimbledon custom colors in production.
+
+**Bug 1 — shadcn/ui CSS variables stripped by Tailwind v4**:
+- **Symptom**: All shadcn card/component backgrounds were transparent; text was near-invisible
+- **Root Cause**: Tailwind v4 silently drops bare `:root` and `.dark` blocks that appear outside a `@layer` directive. The CSS variable declarations never reached the browser.
+- **Fix**: Wrapped the entire `:root { ... }` and `.dark { ... }` blocks inside `@layer base { ... }` in `app/globals.css`
+- **Verification**: `preview_inspect` on `.bg-card` changed from `background-color: rgba(0,0,0,0)` → `lab(100 0 0)` (white)
+
+**Bug 2 — Wimbledon custom colors not loading**:
+- **Symptom**: `bg-wimbledon-purple`, `bg-wimbledon-green`, and all other custom classes generated no CSS output
+- **Root Cause**: Tailwind v4 no longer auto-discovers `tailwind.config.ts`. The file was present but never loaded.
+- **Fix**: Added `@config "../tailwind.config.ts"` to `app/globals.css` immediately after `@import "tailwindcss"`
+- **Verification**: `preview_inspect` on admin nav buttons showed `background-color: rgb(46, 26, 71)` (#2E1A47 Wimbledon purple)
+
+**Files Modified**:
+- `app/globals.css` — two-line fix (added `@config` directive + wrapped variables in `@layer base`)
+
+**Deployment**:
+- Committed as `dae9306` on branch `fix/css-variable-fixes`
+- PR #2 opened and merged into `main` (commit `c11d52b`)
+- Vercel auto-deployed
+
 ## Current Status
 - ✅ App deployed and accessible at https://match-point-delta.vercel.app
 - ✅ Database seeded with test data
@@ -325,10 +348,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ Modern UI with animations and responsive design
 - ✅ Grass court background texture on all pages
 - ✅ Country flag graphics on player selection
-- ✅ shadcn/ui component library integrated with Wimbledon theme
+- ✅ shadcn/ui component library integrated with Wimbledon theme (CSS variables fixed)
 - ✅ Variable-size tournament support (Grand Slam, ATP/WTA 1000/500/250)
 - ✅ Tournament operations admin UI (create, manage players/matches, enter results)
 - ✅ Admin UI deployed to production (PR #1 merged, Vercel auto-deployed)
+- ✅ Tailwind v4 CSS variable bugs fixed and deployed (PR #2 merged)
 - ✅ All build and deployment issues resolved
 
 ## Next Steps

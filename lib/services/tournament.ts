@@ -3,6 +3,7 @@
 import { db } from '@/lib/db'
 import { Gender, TournamentLevel, TournamentStatus } from '@prisma/client'
 import { ROUND_PRESETS } from '@/lib/constants'
+import { pairWinnersForNextRound } from './bracket'
 
 export async function createTournament(
   name: string,
@@ -98,13 +99,15 @@ export async function addPlayers(
 export async function addMatch(
   roundId: string,
   player1Id: string,
-  player2Id: string
+  player2Id: string,
+  bracketPosition?: number
 ) {
   return await db.match.create({
     data: {
       roundId,
       player1Id,
-      player2Id
+      player2Id,
+      bracketPosition: bracketPosition ?? null,
     }
   })
 }
@@ -179,4 +182,74 @@ export async function getCompletedMatches(tournamentId: string) {
       { resultEnteredAt: 'desc' }
     ]
   })
+}
+
+export async function generateNextRoundMatches(tournamentId: string, sourceRoundId: string) {
+  // Get the source round and its matches
+  const sourceRound = await db.round.findUnique({
+    where: { id: sourceRoundId },
+    include: {
+      matches: {
+        orderBy: { bracketPosition: 'asc' },
+      },
+      tournament: {
+        include: {
+          rounds: { orderBy: { roundNumber: 'asc' } },
+        },
+      },
+    },
+  })
+
+  if (!sourceRound) {
+    throw new Error('Round not found')
+  }
+
+  if (sourceRound.tournamentId !== tournamentId) {
+    throw new Error('Round does not belong to this tournament')
+  }
+
+  // Find the next round
+  const nextRound = sourceRound.tournament.rounds.find(
+    r => r.roundNumber === sourceRound.roundNumber + 1
+  )
+
+  if (!nextRound) {
+    throw new Error('No next round exists (this is the final round)')
+  }
+
+  // Check that the next round has no matches yet
+  const existingNextRoundMatches = await db.match.count({
+    where: { roundId: nextRound.id },
+  })
+
+  if (existingNextRoundMatches > 0) {
+    throw new Error(`Round ${nextRound.name} already has ${existingNextRoundMatches} matches`)
+  }
+
+  // Generate pairings from completed matches
+  const pairings = pairWinnersForNextRound(sourceRound.matches)
+
+  // Create matches in the next round
+  const createdMatches = []
+  for (const pairing of pairings) {
+    const match = await db.match.create({
+      data: {
+        roundId: nextRound.id,
+        player1Id: pairing.player1Id,
+        player2Id: pairing.player2Id,
+        bracketPosition: pairing.bracketPosition,
+      },
+      include: {
+        player1: true,
+        player2: true,
+        round: true,
+      },
+    })
+    createdMatches.push(match)
+  }
+
+  return {
+    round: nextRound,
+    matches: createdMatches,
+  }
 }
