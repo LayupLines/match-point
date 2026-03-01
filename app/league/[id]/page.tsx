@@ -178,10 +178,13 @@ export default async function LeaguePage({
                           <CountdownTimer lockTime={round.lockTime.toISOString()} className="font-medium" />
                         </div>
                         {isLocked ? (
-                          <div className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs bg-gray-200 text-gray-600 uppercase tracking-wider rounded-lg">
-                            <span>🔒</span>
-                            <span>Locked</span>
-                          </div>
+                          <Link
+                            href={`/league/${id}/picks?round=${round.id}`}
+                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs bg-gray-200 text-gray-600 uppercase tracking-wider rounded-lg hover:bg-wimbledon-purple/10 hover:text-wimbledon-purple transition-all duration-300"
+                          >
+                            <span>📊</span>
+                            <span>View Results</span>
+                          </Link>
                         ) : (
                           <>
                             <Link
@@ -228,7 +231,7 @@ export default async function LeaguePage({
                       <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Strikes
                       </th>
-                      <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="hidden sm:table-cell px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Correct
                       </th>
                       <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -288,7 +291,7 @@ export default async function LeaguePage({
                               <span>{standing.strikes}</span>
                             </div>
                           </td>
-                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <td className="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap">
                             <span className="text-sm sm:text-base font-semibold text-gray-900">
                               {standing.correctPicks}
                             </span>

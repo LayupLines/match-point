@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { getFlagPath, getCountryName } from '@/lib/utils/country'
 import { CountdownTimer } from '@/components/countdown-timer'
 import { PlayerGrid } from '@/components/player-grid'
+import { evaluatePicksDetailed } from '@/lib/services/pick-evaluation'
+import type { MatchResult, PickData } from '@/lib/services/pick-evaluation'
 
 export const runtime = 'nodejs'
 
@@ -128,6 +130,43 @@ export default async function PicksPage({
 
   const isEliminated = standing?.eliminated || false
 
+  // When round is locked, fetch matches and compute per-pick outcomes
+  let pickOutcomes: { playerId: string; status: 'win' | 'loss' | 'pending'; reason: string }[] = []
+  if (isLocked && existingPicks.length > 0) {
+    const matches = await db.match.findMany({
+      where: { roundId },
+      select: {
+        roundId: true,
+        player1Id: true,
+        player2Id: true,
+        winnerId: true,
+        isWalkover: true,
+        retiredPlayerId: true,
+      },
+    })
+
+    const matchResults: MatchResult[] = matches.map(m => ({
+      roundId: m.roundId,
+      player1Id: m.player1Id,
+      player2Id: m.player2Id,
+      winnerId: m.winnerId,
+      isWalkover: m.isWalkover,
+      retiredPlayerId: m.retiredPlayerId,
+    }))
+
+    const pickData: PickData[] = existingPicks.map(p => ({
+      playerId: p.playerId,
+      roundId: p.roundId,
+      round: { roundNumber: round.roundNumber },
+      submittedAt: p.submittedAt,
+    }))
+
+    pickOutcomes = evaluatePicksDetailed(pickData, matchResults)
+  }
+
+  // Build a map from playerId to outcome for easy lookup
+  const outcomeByPlayer = new Map(pickOutcomes.map(o => [o.playerId, o]))
+
   return (
     <div className="min-h-screen relative">
       {/* Grass court background */}
@@ -186,34 +225,94 @@ export default async function PicksPage({
             </p>
           </div>
         ) : isLocked ? (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Your Picks (Locked)</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {existingPicks.map((pick) => (
-                <div key={pick.id} className="border border-gray-300 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-lg">{pick.player.name}</p>
-                      {pick.player.seed && (
-                        <p className="text-sm text-gray-600">Seed {pick.player.seed}</p>
-                      )}
-                      <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-1">
-                        <img
-                          src={getFlagPath(pick.player.country)}
-                          alt={getCountryName(pick.player.country)}
-                          className="w-4 h-3 object-cover rounded-sm border border-gray-200 shadow-sm"
-                        />
-                        {getCountryName(pick.player.country)}
-                      </p>
+          <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+              <h2 className="text-2xl sm:text-3xl font-light text-gray-900 tracking-wide">Your Picks</h2>
+              {pickOutcomes.some(o => o.status === 'pending') ? (
+                <p className="text-sm text-gray-500 mt-1">Some results are still pending</p>
+              ) : pickOutcomes.length > 0 ? (
+                <p className="text-sm text-gray-500 mt-1">All results are in</p>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1">Waiting for match results</p>
+              )}
+            </div>
+            <div className="p-4 sm:p-6">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {existingPicks.map((pick) => {
+                  const outcome = outcomeByPlayer.get(pick.playerId)
+                  const status = outcome?.status ?? 'pending'
+                  const reason = outcome?.reason ?? 'Awaiting result'
+
+                  return (
+                    <div
+                      key={pick.id}
+                      className={`rounded-xl p-5 transition-all duration-300 relative overflow-hidden ${
+                        status === 'win'
+                          ? 'border-2 border-wimbledon-green/40 bg-gradient-to-br from-green-50 to-white'
+                          : status === 'loss'
+                            ? 'border-2 border-red-300/40 bg-gradient-to-br from-red-50 to-white'
+                            : 'border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-white'
+                      }`}
+                    >
+                      {/* Status indicator */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 text-lg leading-tight">{pick.player.name}</p>
+                          {pick.player.seed && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full mt-1">
+                              <span>🏆</span> Seed {pick.player.seed}
+                            </span>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
+                            <img
+                              src={getFlagPath(pick.player.country)}
+                              alt={getCountryName(pick.player.country)}
+                              className="w-4 h-3 object-cover rounded-sm border border-gray-200 shadow-sm"
+                            />
+                            <span className="font-medium">{getCountryName(pick.player.country)}</span>
+                          </p>
+                        </div>
+                        <span className="text-2xl">
+                          {status === 'win' ? '✅' : status === 'loss' ? '❌' : '⏳'}
+                        </span>
+                      </div>
+
+                      {/* Result badge */}
+                      <div className={`mt-3 px-3 py-2 rounded-lg text-sm font-medium ${
+                        status === 'win'
+                          ? 'bg-wimbledon-green/10 text-wimbledon-green'
+                          : status === 'loss'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        <span className="block text-xs uppercase tracking-wider mb-0.5">
+                          {status === 'win' ? 'Correct Pick' : status === 'loss' ? 'Strike' : 'Pending'}
+                        </span>
+                        <span className="text-xs font-normal opacity-80">{reason}</span>
+                      </div>
                     </div>
-                    <div className="text-2xl">🎾</div>
+                  )
+                })}
+              </div>
+
+              {/* Summary */}
+              {pickOutcomes.length > 0 && !pickOutcomes.some(o => o.status === 'pending') && (
+                <div className="mt-6 flex flex-wrap gap-4 justify-center">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full">
+                    <span>✅</span>
+                    <span className="text-sm font-semibold text-wimbledon-green">
+                      {pickOutcomes.filter(o => o.status === 'win').length} correct
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-red-50 rounded-full">
+                    <span>❌</span>
+                    <span className="text-sm font-semibold text-red-700">
+                      {pickOutcomes.filter(o => o.status === 'loss').length} strike{pickOutcomes.filter(o => o.status === 'loss').length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </div>
-              ))}
+              )}
             </div>
-            <p className="text-sm text-gray-500 mt-4">
-              Results will be available once the admin enters match outcomes.
-            </p>
           </div>
         ) : (
           <>

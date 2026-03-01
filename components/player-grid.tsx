@@ -184,7 +184,7 @@ export function PlayerGrid({
                       <button
                         type="submit"
                         disabled={!isPicked && !canSelect}
-                        className={`w-full mt-3 px-4 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg ${
+                        className={`w-full mt-3 px-4 py-3 text-sm font-medium transition-all duration-300 rounded-lg ${
                           isPicked
                             ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105'
                             : canSelect

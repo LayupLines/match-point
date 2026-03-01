@@ -1,7 +1,7 @@
 // ABOUTME: Tests for the scoring engine's pick evaluation logic.
-// ABOUTME: Covers normal wins/losses, walkovers, retirements, bye players, and partial results.
+// ABOUTME: Covers normal wins/losses, walkovers, retirements, bye players, partial results, and per-pick classification.
 import { describe, it, expect } from 'vitest'
-import { evaluatePicks } from './pick-evaluation'
+import { evaluatePicks, classifyPick, evaluatePicksDetailed } from './pick-evaluation'
 import type { MatchResult, PickData } from './pick-evaluation'
 
 // Helper to create match data
@@ -307,5 +307,130 @@ describe('evaluatePicks', () => {
       expect(result.strikes).toBe(0)
       expect(result.correctPicks).toBe(1)
     })
+  })
+})
+
+describe('classifyPick', () => {
+  it('returns pending when no match exists for the player', () => {
+    const p = pick('playerA', 1)
+    const matches: MatchResult[] = []
+
+    const result = classifyPick(p, matches)
+
+    expect(result.status).toBe('pending')
+    expect(result.reason).toBe('Awaiting result')
+  })
+
+  it('returns pending when match has no winner yet', () => {
+    const p = pick('playerA', 1)
+    const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: null })]
+
+    const result = classifyPick(p, matches)
+
+    expect(result.status).toBe('pending')
+    expect(result.reason).toBe('Awaiting result')
+  })
+
+  it('returns win with "Won match" for a normal win', () => {
+    const p = pick('playerA', 1)
+    const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerA' })]
+
+    const result = classifyPick(p, matches)
+
+    expect(result.status).toBe('win')
+    expect(result.reason).toBe('Won match')
+  })
+
+  it('returns win with "Won by walkover" for walkover win', () => {
+    const p = pick('playerA', 1)
+    const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerA', isWalkover: true })]
+
+    const result = classifyPick(p, matches)
+
+    expect(result.status).toBe('win')
+    expect(result.reason).toBe('Won by walkover')
+  })
+
+  it('returns win with "Opponent retired" when opponent retired', () => {
+    const p = pick('playerA', 1)
+    const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerA', retiredPlayerId: 'playerB' })]
+
+    const result = classifyPick(p, matches)
+
+    expect(result.status).toBe('win')
+    expect(result.reason).toBe('Opponent retired')
+  })
+
+  it('returns loss with "Lost match" for a normal loss', () => {
+    const p = pick('playerA', 1)
+    const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerB' })]
+
+    const result = classifyPick(p, matches)
+
+    expect(result.status).toBe('loss')
+    expect(result.reason).toBe('Lost match')
+  })
+
+  it('returns loss with "Retired from match" when picked player retired', () => {
+    const p = pick('playerA', 1)
+    const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerB', retiredPlayerId: 'playerA' })]
+
+    const result = classifyPick(p, matches)
+
+    expect(result.status).toBe('loss')
+    expect(result.reason).toBe('Retired from match')
+  })
+
+  it('returns loss with "Lost by walkover" when picked player lost via walkover', () => {
+    const p = pick('playerB', 1)
+    const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerA', isWalkover: true })]
+
+    const result = classifyPick(p, matches)
+
+    expect(result.status).toBe('loss')
+    expect(result.reason).toBe('Lost by walkover')
+  })
+
+  it('includes playerId in the result', () => {
+    const p = pick('playerX', 1)
+    const matches = [match({ roundId: 'r1', player1Id: 'playerX', player2Id: 'playerY', winnerId: 'playerX' })]
+
+    const result = classifyPick(p, matches)
+
+    expect(result.playerId).toBe('playerX')
+  })
+})
+
+describe('evaluatePicksDetailed', () => {
+  it('returns outcomes for all picks', () => {
+    const picks = [pick('playerA', 1), pick('playerC', 1)]
+    const matches = [
+      match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerA' }),
+      match({ roundId: 'r1', player1Id: 'playerC', player2Id: 'playerD', winnerId: 'playerD' }),
+    ]
+
+    const results = evaluatePicksDetailed(picks, matches)
+
+    expect(results).toHaveLength(2)
+    expect(results[0]).toEqual({ playerId: 'playerA', status: 'win', reason: 'Won match' })
+    expect(results[1]).toEqual({ playerId: 'playerC', status: 'loss', reason: 'Lost match' })
+  })
+
+  it('handles mixed pending and completed picks', () => {
+    const picks = [pick('playerA', 1), pick('playerC', 1)]
+    const matches = [
+      match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerA' }),
+      match({ roundId: 'r1', player1Id: 'playerC', player2Id: 'playerD', winnerId: null }),
+    ]
+
+    const results = evaluatePicksDetailed(picks, matches)
+
+    expect(results[0].status).toBe('win')
+    expect(results[1].status).toBe('pending')
+  })
+
+  it('returns empty array for no picks', () => {
+    const results = evaluatePicksDetailed([], [])
+    expect(results).toEqual([])
   })
 })

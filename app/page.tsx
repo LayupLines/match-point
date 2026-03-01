@@ -15,10 +15,10 @@ export default async function HomePage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-green-50 to-white p-4">
       <div className="max-w-4xl w-full text-center space-y-8">
         <div className="space-y-4">
-          <h1 className="text-6xl font-bold text-green-800">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-green-800">
             Match Point
           </h1>
-          <p className="text-2xl text-gray-600">
+          <p className="text-xl sm:text-2xl text-gray-600">
             Wimbledon Survivor Tennis Game
           </p>
         </div>
@@ -51,7 +51,7 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        <div className="pt-12 grid md:grid-cols-3 gap-6 text-left">
+        <div className="pt-12 grid sm:grid-cols-2 md:grid-cols-3 gap-6 text-left">
           <div className="p-6 bg-white rounded-lg shadow">
             <h3 className="font-bold text-lg mb-2">🎾 Multi-Pick Rounds</h3>
             <p className="text-gray-600">Pick 4 players in early rounds, narrowing down as the tournament progresses.</p>

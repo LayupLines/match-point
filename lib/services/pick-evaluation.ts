@@ -1,5 +1,5 @@
 // ABOUTME: Pure scoring logic that evaluates picks against match results.
-// ABOUTME: Calculates strikes, correct picks, and tracks final round submissions without database dependencies.
+// ABOUTME: Calculates strikes, correct picks, per-pick outcomes, and tracks final round submissions without database dependencies.
 
 export type MatchResult = {
   roundId: string
@@ -21,6 +21,51 @@ export type EvaluationResult = {
   strikes: number
   correctPicks: number
   finalRoundSubmission: Date | null
+}
+
+export type PickOutcome = {
+  playerId: string
+  status: 'win' | 'loss' | 'pending'
+  reason: string
+}
+
+/** Classify a single pick against its match result. */
+export function classifyPick(pick: PickData, matches: MatchResult[]): PickOutcome {
+  const match = matches.find(
+    m => m.roundId === pick.roundId &&
+      (m.player1Id === pick.playerId || m.player2Id === pick.playerId)
+  )
+
+  // No match found for this player, or match has no result yet
+  if (!match || !match.winnerId) {
+    return { playerId: pick.playerId, status: 'pending', reason: 'Awaiting result' }
+  }
+
+  const didPlayerWin = match.winnerId === pick.playerId
+
+  if (didPlayerWin) {
+    if (match.isWalkover) {
+      return { playerId: pick.playerId, status: 'win', reason: 'Won by walkover' }
+    }
+    if (match.retiredPlayerId) {
+      return { playerId: pick.playerId, status: 'win', reason: 'Opponent retired' }
+    }
+    return { playerId: pick.playerId, status: 'win', reason: 'Won match' }
+  }
+
+  // Player lost
+  if (match.retiredPlayerId === pick.playerId) {
+    return { playerId: pick.playerId, status: 'loss', reason: 'Retired from match' }
+  }
+  if (match.isWalkover) {
+    return { playerId: pick.playerId, status: 'loss', reason: 'Lost by walkover' }
+  }
+  return { playerId: pick.playerId, status: 'loss', reason: 'Lost match' }
+}
+
+/** Evaluate all picks and return per-pick outcomes. */
+export function evaluatePicksDetailed(picks: PickData[], matches: MatchResult[]): PickOutcome[] {
+  return picks.map(pick => classifyPick(pick, matches))
 }
 
 export function evaluatePicks(
