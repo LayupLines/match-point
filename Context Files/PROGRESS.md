@@ -341,20 +341,111 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - PR #2 opened and merged into `main` (commit `c11d52b`)
 - Vercel auto-deployed
 
+### Phase 1: Indian Wells Prep (Mar 1, 2026)
+**Goal**: Prepare the app for a full end-to-end test during the Indian Wells BNP Paribas Open (ATP 1000 + WTA 1000) with 2-5 test users.
+
+#### Task 1: Scoring Edge Case Verification (TDD)
+**Work Done**:
+- Set up Vitest test framework (no test framework existed previously)
+- Extracted pure scoring logic into `lib/services/pick-evaluation.ts` (no database dependency) for testability
+- **Found real bug**: match lookup in `scoring.ts` didn't filter by `roundId` — if a player appeared in multiple rounds, scoring would evaluate against the wrong match. Fixed by adding `m.roundId === pick.roundId` to match finding logic.
+- Wrote 20 tests covering: normal wins/losses, walkovers (bonus point), retirements (opponent gets credit), bye players (silent skip, no strike), partial results, multi-round scoring, final round tracking
+- Updated `scoring.ts` to delegate to the new `evaluatePicks()` function
+
+**Files Created**:
+- `vitest.config.ts` — Test framework config with path aliases
+- `lib/services/pick-evaluation.ts` — Pure scoring logic (evaluatePicks function)
+- `lib/services/scoring.test.ts` — 20 scoring tests
+
+**Files Modified**:
+- `package.json` — Added vitest devDependency, test/test:watch scripts
+- `lib/services/scoring.ts` — Uses evaluatePicks() from pick-evaluation.ts
+
+#### Task 2: Result Correction Capability
+**Work Done**:
+- Verified existing API already supports updating results (uses `db.match.update`)
+- Added `getCompletedMatches()` to the matches API GET response
+- Rewrote `result-entry-panel.tsx` with:
+  - Confirmation dialogs before entering/correcting results
+  - Collapsible "Completed Matches" section showing matches with results
+  - "Correct" button on each completed match to re-enter results
+  - Matches move between pending/completed sections in-place (no page reload)
+
+**Files Modified**:
+- `app/api/admin/tournaments/[id]/matches/route.ts` — GET returns `completedMatches`, POST auto-assigns bracketPosition
+- `components/admin/result-entry-panel.tsx` — Rewritten with correction capability
+
+#### Task 3: Auto-Generate Bracket Matches
+**Motivation**: Manually creating 7 CSV files during a live tournament is error-prone. Auto-generation reduces this to 2 uploads (ATP 1000: R1 + R2 due to byes) or 1 upload (WTA 1000: R1 only).
+
+**Work Done**:
+- Added `bracketPosition Int?` to Match model with `@@unique([roundId, bracketPosition])` constraint
+- Created migration SQL manually (no local DATABASE_URL)
+- Updated CSV parser to support optional 4th column for bracket position
+- Created pure function `pairWinnersForNextRound()` that sorts completed matches by bracket position and pairs consecutive winners
+- Created `generateNextRoundMatches()` service function that validates round state, generates pairings, and creates matches in the next round
+- Created API endpoint `POST /api/admin/tournaments/[id]/rounds/[roundId]/generate`
+- Created `GenerateRoundButton` client component with confirmation dialog
+- Integrated button into matches page — appears next to completed round headers when eligible (all matches done, next round exists and is empty)
+- 7 bracket tests all passing
+
+**Files Created**:
+- `prisma/migrations/20260301000000_add_bracket_position/migration.sql`
+- `lib/services/bracket.ts` — Pure bracket pairing function
+- `lib/services/bracket.test.ts` — 7 bracket tests
+- `app/api/admin/tournaments/[id]/rounds/[roundId]/generate/route.ts`
+- `components/admin/generate-round-button.tsx`
+
+**Files Modified**:
+- `prisma/schema.prisma` — Added bracketPosition field + unique constraint
+- `lib/utils/csv.ts` — Optional 4th column support
+- `lib/services/tournament.ts` — addMatch() accepts bracketPosition, added generateNextRoundMatches()
+- `app/admin/tournaments/[id]/matches/page.tsx` — Generation eligibility logic + button
+
+**Bracket Workflow**:
+- ATP 1000: Upload R1 CSV + R2 CSV (32 seeds have byes), R3-R7 auto-generate (5 rounds saved)
+- WTA 1000: Upload R1 CSV, R2-R6 auto-generate (5 rounds saved)
+
+#### Deployment (Mar 1, 2026)
+- Initialized git repo in project directory (was not a git repo previously)
+- Connected to existing GitHub remote `LayupLines/match-point`
+- Removed `.env.production` from tracking (contained real secrets — DATABASE_URL, NEXTAUTH_SECRET, OIDC token)
+- Added all Prisma migrations to version control (were never committed)
+- Moved docs to `Context Files/` directory
+- Ran `prisma migrate deploy` on Neon production DB — migration `20260301000000_add_bracket_position` applied
+- Pushed to GitHub, Vercel auto-deployed (build succeeded in 37s)
+- **Fixed pre-existing auth bug**: Vercel had `NEXTAUTH_SECRET` but NextAuth v5 beta expects `AUTH_SECRET`. Added correct env var and redeployed.
+
+**Smoke Test Results**:
+- ✅ Login working (admin@matchpoint.com)
+- ✅ Tournaments API returns data
+- ✅ Matches API returns both `matches` and `completedMatches` keys
+- ✅ `bracketPosition` field present (null for existing matches)
+- ✅ Admin matches page renders Pending + Completed sections
+- ✅ All new routes visible in build output including `/generate` endpoint
+- ✅ 27 tests passing (20 scoring + 7 bracket)
+- ✅ TypeScript clean (`tsc --noEmit` zero errors)
+
 ## Current Status
 - ✅ App deployed and accessible at https://match-point-delta.vercel.app
 - ✅ Database seeded with test data
-- ✅ Authentication working
+- ✅ Authentication working (AUTH_SECRET env var fixed)
 - ✅ Modern UI with animations and responsive design
 - ✅ Grass court background texture on all pages
 - ✅ Country flag graphics on player selection
 - ✅ shadcn/ui component library integrated with Wimbledon theme (CSS variables fixed)
 - ✅ Variable-size tournament support (Grand Slam, ATP/WTA 1000/500/250)
 - ✅ Tournament operations admin UI (create, manage players/matches, enter results)
-- ✅ Admin UI deployed to production (PR #1 merged, Vercel auto-deployed)
-- ✅ Tailwind v4 CSS variable bugs fixed and deployed (PR #2 merged)
-- ✅ All build and deployment issues resolved
+- ✅ Scoring engine bug fixed (multi-round match lookup) with 20 tests
+- ✅ Result correction capability for admin
+- ✅ Auto-bracket generation (reduces manual CSV work from 7 to 1-2 per tournament)
+- ✅ Vitest test framework with 27 passing tests
+- ✅ All code deployed and smoke-tested on production
 
 ## Next Steps
-- Test end-to-end with a Doha ATP 500 tournament (create → upload 32 players → upload Round 1 matches → activate → enter results)
-- Invite test users to create leagues and make picks against a real tournament
+- Create Indian Wells tournaments (ATP 1000 Men's + WTA 1000 Women's) via admin UI once draws are published
+- Set lock times per round to match actual Indian Wells schedule (main draw ~Mar 9-10)
+- Upload player and R1 match CSVs from draw sheets
+- Create test leagues and invite 2-5 test users
+- Phase 2 (future): Player search/filter, pick feedback, countdown timers
+- Phase 3 (future): Previous round results, scoring explanations, mobile improvements
