@@ -1,5 +1,5 @@
 // ABOUTME: Client component that shows a live countdown to a round's lock time.
-// Updates every 60 seconds. Colors shift from default → orange (<24h) → red+pulse (<1h).
+// Updates every 60 seconds. Colors shift from default → orange (<24h) → red+pulse (<2h).
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -23,7 +23,7 @@ function formatCountdown(lockTime: Date): { text: string; urgency: 'normal' | 's
 
   if (hours > 0) {
     const remainingMinutes = minutes % 60
-    return { text: `${hours}h ${remainingMinutes}m remaining`, urgency: hours < 1 ? 'urgent' : 'soon' }
+    return { text: `${hours}h ${remainingMinutes}m remaining`, urgency: hours < 2 ? 'urgent' : 'soon' }
   }
 
   return { text: `${minutes}m remaining`, urgency: 'urgent' }

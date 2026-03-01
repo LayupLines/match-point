@@ -27,6 +27,7 @@ export type PickOutcome = {
   playerId: string
   status: 'win' | 'loss' | 'pending'
   reason: string
+  bonus: boolean // true when walkover win grants an extra correct pick
 }
 
 /** Classify a single pick against its match result. */
@@ -38,29 +39,29 @@ export function classifyPick(pick: PickData, matches: MatchResult[]): PickOutcom
 
   // No match found for this player, or match has no result yet
   if (!match || !match.winnerId) {
-    return { playerId: pick.playerId, status: 'pending', reason: 'Awaiting result' }
+    return { playerId: pick.playerId, status: 'pending', reason: 'Awaiting result', bonus: false }
   }
 
   const didPlayerWin = match.winnerId === pick.playerId
 
   if (didPlayerWin) {
     if (match.isWalkover) {
-      return { playerId: pick.playerId, status: 'win', reason: 'Won by walkover' }
+      return { playerId: pick.playerId, status: 'win', reason: 'Won by walkover', bonus: true }
     }
     if (match.retiredPlayerId) {
-      return { playerId: pick.playerId, status: 'win', reason: 'Opponent retired' }
+      return { playerId: pick.playerId, status: 'win', reason: 'Opponent retired', bonus: false }
     }
-    return { playerId: pick.playerId, status: 'win', reason: 'Won match' }
+    return { playerId: pick.playerId, status: 'win', reason: 'Won match', bonus: false }
   }
 
   // Player lost
   if (match.retiredPlayerId === pick.playerId) {
-    return { playerId: pick.playerId, status: 'loss', reason: 'Retired from match' }
+    return { playerId: pick.playerId, status: 'loss', reason: 'Retired from match', bonus: false }
   }
   if (match.isWalkover) {
-    return { playerId: pick.playerId, status: 'loss', reason: 'Lost by walkover' }
+    return { playerId: pick.playerId, status: 'loss', reason: 'Lost by walkover', bonus: false }
   }
-  return { playerId: pick.playerId, status: 'loss', reason: 'Lost match' }
+  return { playerId: pick.playerId, status: 'loss', reason: 'Lost match', bonus: false }
 }
 
 /** Evaluate all picks and return per-pick outcomes. */

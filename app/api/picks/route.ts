@@ -53,10 +53,58 @@ export async function POST(req: NextRequest) {
       }
 
       const { db } = await import('@/lib/db')
-      const { redirect } = await import('next/navigation')
+
+      // Validate membership
+      const membership = await db.leagueMembership.findUnique({
+        where: { userId_leagueId: { userId: session.user.id!, leagueId } },
+      })
+      if (!membership) {
+        return NextResponse.json({ error: 'Not a member of this league' }, { status: 403 })
+      }
+
+      // Validate round exists and belongs to the league's tournament
+      const league = await db.league.findUnique({ where: { id: leagueId }, select: { tournamentId: true } })
+      const round = await db.round.findUnique({ where: { id: roundId } })
+      if (!round || !league || round.tournamentId !== league.tournamentId) {
+        return NextResponse.json({ error: 'Invalid round' }, { status: 400 })
+      }
+
+      // Check lock time
+      if (new Date(round.lockTime) < new Date()) {
+        return NextResponse.redirect(new URL(`/league/${leagueId}/picks?round=${roundId}&feedback=locked`, req.url))
+      }
+
+      // Check elimination
+      const standing = await db.standings.findUnique({
+        where: { userId_leagueId: { userId: session.user.id!, leagueId } },
+      })
+      if (standing?.eliminated) {
+        return NextResponse.json({ error: 'You have been eliminated' }, { status: 403 })
+      }
 
       if (action === 'add') {
-        // Add pick
+        // Check player belongs to this tournament
+        const player = await db.player.findUnique({ where: { id: playerId } })
+        if (!player || player.tournamentId !== league.tournamentId) {
+          return NextResponse.json({ error: 'Invalid player' }, { status: 400 })
+        }
+
+        // Check player not already used in a prior round
+        const priorPick = await db.pick.findFirst({
+          where: { userId: session.user.id!, leagueId, playerId, roundId: { not: roundId } },
+        })
+        if (priorPick) {
+          return NextResponse.json({ error: 'Player already used in a prior round' }, { status: 400 })
+        }
+
+        // Check not exceeding required picks
+        const currentPickCount = await db.pick.count({
+          where: { userId: session.user.id!, leagueId, roundId },
+        })
+        if (currentPickCount >= round.requiredPicks) {
+          return NextResponse.json({ error: 'Maximum picks reached' }, { status: 400 })
+        }
+
         await db.pick.create({
           data: {
             userId: session.user.id!,

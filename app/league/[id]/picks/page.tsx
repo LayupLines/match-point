@@ -131,7 +131,7 @@ export default async function PicksPage({
   const isEliminated = standing?.eliminated || false
 
   // When round is locked, fetch matches and compute per-pick outcomes
-  let pickOutcomes: { playerId: string; status: 'win' | 'loss' | 'pending'; reason: string }[] = []
+  let pickOutcomes: { playerId: string; status: 'win' | 'loss' | 'pending'; reason: string; bonus: boolean }[] = []
   if (isLocked && existingPicks.length > 0) {
     const matches = await db.match.findMany({
       where: { roundId },
@@ -242,6 +242,7 @@ export default async function PicksPage({
                   const outcome = outcomeByPlayer.get(pick.playerId)
                   const status = outcome?.status ?? 'pending'
                   const reason = outcome?.reason ?? 'Awaiting result'
+                  const bonus = outcome?.bonus ?? false
 
                   return (
                     <div
@@ -286,7 +287,7 @@ export default async function PicksPage({
                             : 'bg-gray-100 text-gray-600'
                       }`}>
                         <span className="block text-xs uppercase tracking-wider mb-0.5">
-                          {status === 'win' ? 'Correct Pick' : status === 'loss' ? 'Strike' : 'Pending'}
+                          {status === 'win' ? (bonus ? 'Correct Pick +1 Bonus' : 'Correct Pick') : status === 'loss' ? 'Strike' : 'Pending'}
                         </span>
                         <span className="text-xs font-normal opacity-80">{reason}</span>
                       </div>
@@ -350,11 +351,11 @@ export default async function PicksPage({
                     <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden shadow-inner">
                       <div
                         className="bg-gradient-to-r from-wimbledon-purple via-wimbledon-green to-wimbledon-green-dark h-full transition-all duration-700 ease-out rounded-full"
-                        style={{ width: `${(existingPicks.length / round.requiredPicks) * 100}%` }}
+                        style={{ width: `${round.requiredPicks > 0 ? (existingPicks.length / round.requiredPicks) * 100 : 0}%` }}
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-2 text-right">
-                      {Math.round((existingPicks.length / round.requiredPicks) * 100)}% complete
+                      {round.requiredPicks > 0 ? Math.round((existingPicks.length / round.requiredPicks) * 100) : 0}% complete
                     </p>
                   </div>
                 </div>

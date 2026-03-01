@@ -331,7 +331,7 @@ describe('classifyPick', () => {
     expect(result.reason).toBe('Awaiting result')
   })
 
-  it('returns win with "Won match" for a normal win', () => {
+  it('returns win with "Won match" and no bonus for a normal win', () => {
     const p = pick('playerA', 1)
     const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerA' })]
 
@@ -339,9 +339,10 @@ describe('classifyPick', () => {
 
     expect(result.status).toBe('win')
     expect(result.reason).toBe('Won match')
+    expect(result.bonus).toBe(false)
   })
 
-  it('returns win with "Won by walkover" for walkover win', () => {
+  it('returns win with "Won by walkover" and bonus for walkover win', () => {
     const p = pick('playerA', 1)
     const matches = [match({ roundId: 'r1', player1Id: 'playerA', player2Id: 'playerB', winnerId: 'playerA', isWalkover: true })]
 
@@ -349,6 +350,7 @@ describe('classifyPick', () => {
 
     expect(result.status).toBe('win')
     expect(result.reason).toBe('Won by walkover')
+    expect(result.bonus).toBe(true)
   })
 
   it('returns win with "Opponent retired" when opponent retired', () => {
@@ -412,8 +414,8 @@ describe('evaluatePicksDetailed', () => {
     const results = evaluatePicksDetailed(picks, matches)
 
     expect(results).toHaveLength(2)
-    expect(results[0]).toEqual({ playerId: 'playerA', status: 'win', reason: 'Won match' })
-    expect(results[1]).toEqual({ playerId: 'playerC', status: 'loss', reason: 'Lost match' })
+    expect(results[0]).toEqual({ playerId: 'playerA', status: 'win', reason: 'Won match', bonus: false })
+    expect(results[1]).toEqual({ playerId: 'playerC', status: 'loss', reason: 'Lost match', bonus: false })
   })
 
   it('handles mixed pending and completed picks', () => {
