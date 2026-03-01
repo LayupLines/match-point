@@ -529,6 +529,55 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - 39 tests passing, TypeScript clean
 - Pushed to GitHub, Vercel auto-deployed
 
+### Code Review & Fixes (Mar 1, 2026)
+**Goal**: Comprehensive review of all Phase 1–3 changes before inviting test users.
+
+#### Critical Fix: Pick API Form Path Validation
+**Problem**: The form-based pick add/remove path (`POST /api/picks` with form data) had no server-side validation — no lock-time check, no membership check, no elimination check, no player reuse check, no pick count limit. A user could submit picks after lock, reuse players, or exceed limits.
+
+**Work Done**:
+- Added lock-time check (redirects with `feedback=locked` if round is past lock time)
+- Added league membership verification
+- Added elimination status check
+- Added player tournament membership validation (on add)
+- Added player reuse check across prior rounds (on add)
+- Added pick count limit check against `round.requiredPicks` (on add)
+
+**Files Modified**:
+- `app/api/picks/route.ts` — Full validation chain before pick create/delete
+
+#### Medium Fix: Walkover Bonus Consistency
+**Problem**: `evaluatePicks()` awarded 2 correct picks for a walkover win (1 normal + 1 bonus), but `classifyPick()` returned a single "win" status. The UI result cards would show 1 correct pick while standings reflected 2.
+
+**Work Done**:
+- Added `bonus: boolean` field to `PickOutcome` type
+- `classifyPick()` now returns `bonus: true` for walkover wins
+- UI result badge shows "Correct Pick +1 Bonus" for walkover wins
+- Updated tests to verify bonus field
+
+**Files Modified**:
+- `lib/services/pick-evaluation.ts` — `bonus` field on `PickOutcome`
+- `lib/services/scoring.test.ts` — Updated tests for bonus field
+- `app/league/[id]/picks/page.tsx` — Bonus display in result badge
+
+#### Minor Fixes
+- **Countdown timer dead branch**: `hours < 1` was unreachable when `hours > 0`. Changed to `hours < 2` so urgent (red+pulse) state triggers at <2 hours.
+- **Division by zero**: Progress bar guarded against `requiredPicks === 0`.
+- **Dead import**: Removed unused `redirect` import from picks API route.
+- **Admin auth**: Verified admin layout already enforces ADMIN role on all `/admin/*` pages — no additional check needed.
+
+**Files Modified**:
+- `components/countdown-timer.tsx` — Fixed urgency threshold
+- `app/league/[id]/picks/page.tsx` — Division by zero guard
+- `app/api/picks/route.ts` — Removed dead import
+
+#### Noted for Future (Not Fixed)
+- `toLocaleString()` server-side timezone (acceptable for same-timezone test users)
+- `session.user.id!` non-null assertions (functional with current auth)
+- Sequential DB queries on picks page (premature to optimize)
+- `img` tags instead of `next/image` (no perf concern at current scale)
+- Standings rank ties (acceptable for test phase)
+
 ## Current Status
 - ✅ App deployed and accessible at https://match-point-delta.vercel.app
 - ✅ Database seeded with test data
@@ -545,11 +594,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ Player search/filter on picks page
 - ✅ Pick save feedback banners (auto-dismiss)
 - ✅ Live countdown timers on picks and league pages
-- ✅ Per-pick result cards with win/loss/pending status and explanations
+- ✅ Per-pick result cards with win/loss/pending status, explanations, and walkover bonus
 - ✅ Clickable locked rounds ("View Results" link)
 - ✅ Mobile-responsive hero text, hidden Correct column, larger touch targets
+- ✅ Pick API fully validated (lock time, membership, elimination, player reuse, pick limits)
+- ✅ Countdown timer urgency thresholds corrected (<2h = urgent)
 - ✅ Vitest test framework with 39 passing tests
 - ✅ All code deployed and smoke-tested on production
+- ✅ Full code review completed — critical and medium issues resolved
 
 ## Next Steps
 - Create Indian Wells tournaments (ATP 1000 Men's + WTA 1000 Women's) via admin UI once draws are published
