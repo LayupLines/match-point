@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import Link from 'next/link'
+import { CountdownTimer } from '@/components/countdown-timer'
 
 export const runtime = 'nodejs'
 
@@ -174,7 +175,7 @@ export default async function LeaguePage({
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-500 mb-4 pb-4 border-b border-gray-200">
                           <span>🕒</span>
-                          <span className="truncate">{lockTime.toLocaleDateString()} at {lockTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+                          <CountdownTimer lockTime={round.lockTime.toISOString()} className="font-medium" />
                         </div>
                         {isLocked ? (
                           <div className="flex items-center justify-center gap-2 px-4 py-2.5 text-xs bg-gray-200 text-gray-600 uppercase tracking-wider rounded-lg">

@@ -77,8 +77,9 @@ export async function POST(req: NextRequest) {
         })
       }
 
-      // Redirect back to picks page
-      return NextResponse.redirect(new URL(`/league/${leagueId}/picks?round=${roundId}`, req.url))
+      // Redirect back to picks page with feedback
+      const feedbackParam = action === 'add' ? 'added' : 'removed'
+      return NextResponse.redirect(new URL(`/league/${leagueId}/picks?round=${roundId}&feedback=${feedbackParam}`, req.url))
     }
 
     // Handle JSON data (bulk submission)

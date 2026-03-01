@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { db } from '@/lib/db'
 import Link from 'next/link'
 import { getFlagPath, getCountryName } from '@/lib/utils/country'
+import { CountdownTimer } from '@/components/countdown-timer'
+import { PlayerGrid } from '@/components/player-grid'
 
 export const runtime = 'nodejs'
 
@@ -11,7 +13,7 @@ export default async function PicksPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ round?: string }>
+  searchParams: Promise<{ round?: string; feedback?: string }>
 }) {
   const session = await auth()
   if (!session?.user) {
@@ -19,7 +21,7 @@ export default async function PicksPage({
   }
 
   const { id: leagueId } = await params
-  const { round: roundId } = await searchParams
+  const { round: roundId, feedback } = await searchParams
 
   if (!roundId) {
     redirect(`/league/${leagueId}`)
@@ -154,7 +156,7 @@ export default async function PicksPage({
             </div>
             <div className="bg-white/10 backdrop-blur-sm px-4 sm:px-6 py-3 sm:py-4 rounded-xl border border-white/20 w-full sm:w-auto">
               <p className="text-xs text-white/60 uppercase tracking-wider mb-1">
-                🕒 Locks: {new Date(round.lockTime).toLocaleDateString()}
+                🕒 <CountdownTimer lockTime={round.lockTime.toISOString()} className="text-white/80" />
               </p>
               <p className="text-sm sm:text-base text-white font-medium">
                 {round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required
@@ -283,96 +285,22 @@ export default async function PicksPage({
             </div>
 
             {/* Player Grid */}
-            <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
-              <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">👥</span>
-                  <h2 className="text-2xl sm:text-3xl font-light text-gray-900 tracking-wide">
-                    Available Players
-                  </h2>
-                </div>
-                <p className="text-sm text-gray-600">
-                  {allPlayers.length} players • {league.tournament.name}
-                </p>
-              </div>
-              <div className="p-4 sm:p-6">
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {allPlayers.map((player, index) => {
-                    const isUsed = usedPlayerIds.has(player.id)
-                    const isPicked = currentPickIds.has(player.id)
-                    const canSelect = !isUsed && !isPicked && existingPicks.length < round.requiredPicks
-
-                    return (
-                      <div
-                        key={player.id}
-                        className={`rounded-xl p-4 transition-all duration-300 relative overflow-hidden animate-in fade-in slide-in-from-bottom-2 ${
-                          isPicked
-                            ? 'border-2 border-wimbledon-green bg-gradient-to-br from-wimbledon-green/10 to-wimbledon-green/5 shadow-lg scale-105'
-                            : isUsed
-                            ? 'border border-gray-200 bg-gray-50 opacity-50'
-                            : 'border-2 border-gray-200 hover:border-wimbledon-green/50 hover:shadow-xl hover:scale-105 bg-white'
-                        }`}
-                      >
-                        {isPicked && (
-                          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-wimbledon-green/20 to-transparent rounded-bl-full"></div>
-                        )}
-                        <div className="flex items-start justify-between mb-3 relative z-10">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 leading-tight mb-1">{player.name}</p>
-                            {player.seed && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full mt-1">
-                                <span>🏆</span>
-                                <span>Seed {player.seed}</span>
-                              </span>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
-                              <img
-                                src={getFlagPath(player.country)}
-                                alt={getCountryName(player.country)}
-                                className="w-4 h-3 object-cover rounded-sm border border-gray-200 shadow-sm"
-                              />
-                              <span className="font-medium">{getCountryName(player.country)}</span>
-                            </p>
-                          </div>
-                          {isPicked && <span className="text-wimbledon-green text-2xl animate-bounce">✓</span>}
-                          {isUsed && !isPicked && (
-                            <span className="text-xs bg-gray-300 text-gray-600 px-2 py-1 uppercase tracking-wider rounded-full">
-                              Used
-                            </span>
-                          )}
-                        </div>
-
-                        {!isUsed && (
-                          <form action="/api/picks" method="POST">
-                            <input type="hidden" name="leagueId" value={leagueId} />
-                            <input type="hidden" name="roundId" value={roundId} />
-                            <input type="hidden" name="playerId" value={player.id} />
-                            <input
-                              type="hidden"
-                              name="action"
-                              value={isPicked ? 'remove' : 'add'}
-                            />
-                            <button
-                              type="submit"
-                              disabled={!isPicked && !canSelect}
-                              className={`w-full mt-3 px-4 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg ${
-                                isPicked
-                                  ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105'
-                                  : canSelect
-                                  ? 'bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white hover:shadow-lg hover:scale-105'
-                                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              }`}
-                            >
-                              {isPicked ? '✕ Remove' : '+ Select'}
-                            </button>
-                          </form>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
+            <PlayerGrid
+              players={allPlayers.map((p) => ({
+                id: p.id,
+                name: p.name,
+                seed: p.seed,
+                country: p.country,
+              }))}
+              usedPlayerIds={Array.from(usedPlayerIds)}
+              currentPickIds={Array.from(currentPickIds)}
+              requiredPicks={round.requiredPicks}
+              existingPickCount={existingPicks.length}
+              leagueId={leagueId}
+              roundId={roundId}
+              tournamentName={league.tournament.name}
+              feedback={feedback}
+            />
 
             {/* Submit Notice */}
             {existingPicks.length === round.requiredPicks && (
