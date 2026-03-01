@@ -426,6 +426,109 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ 27 tests passing (20 scoring + 7 bracket)
 - ✅ TypeScript clean (`tsc --noEmit` zero errors)
 
+### Phase 2: Polish for Test Users (Mar 1, 2026)
+**Goal**: Improve the picks experience before inviting 2-5 test users for Indian Wells.
+
+#### Player Search/Filter
+**Problem**: ATP 1000 has 96 players — finding a specific player means scrolling through a 4-column grid.
+
+**Work Done**:
+- Extracted the inline player grid from the picks page server component into a `PlayerGrid` client component
+- Added search input that filters by player name or country (case-insensitive)
+- Shows "Showing X of Y players" when filtering, with a clear button
+- Empty state with "No players match" message and clear link
+
+**Files Created**:
+- `components/player-grid.tsx` — Client component with search, player cards, and form submissions
+
+**Files Modified**:
+- `app/league/[id]/picks/page.tsx` — Replaced ~100 lines of inline grid with `<PlayerGrid>` component
+
+#### Pick Save Feedback
+**Problem**: After clicking Select/Remove, the page silently reloads with no confirmation.
+
+**Work Done**:
+- Added `feedback=added` or `feedback=removed` query param to the API redirect URL
+- `PlayerGrid` reads the feedback param and shows a green/gray banner at top
+- Banner auto-dismisses after 3 seconds via `useEffect` + `setTimeout`
+
+**Files Modified**:
+- `app/api/picks/route.ts` — Added feedback param to redirect URL
+- `components/player-grid.tsx` — Feedback banner display and auto-dismiss
+
+#### Countdown Timers
+**Problem**: Lock times shown as raw dates ("Mar 10, 2026") with no urgency signal.
+
+**Work Done**:
+- Created reusable `CountdownTimer` client component
+- Displays: "2d 5h remaining" (>24h), "3h 12m remaining" (<24h, orange), "45m remaining" (<1h, red+pulse), "Locked" (past)
+- Updates every 60 seconds via `setInterval`
+- Integrated into picks page header and league page round cards
+
+**Files Created**:
+- `components/countdown-timer.tsx` — Reusable countdown client component
+
+**Files Modified**:
+- `app/league/[id]/picks/page.tsx` — Replaced static lock date with `<CountdownTimer>` in header
+- `app/league/[id]/page.tsx` — Replaced static lock time with `<CountdownTimer>` in round cards
+
+#### Deployment (Mar 1, 2026)
+- No database migration needed (UI-only changes)
+- Pushed to GitHub, Vercel auto-deployed (build succeeded in 36s)
+- 27 tests passing, TypeScript clean
+
+### Phase 3: Results & Mobile Polish (Mar 1, 2026)
+**Goal**: Show per-pick results after rounds lock, make locked rounds browsable, improve mobile UX.
+
+#### Per-Pick Results (classifyPick + evaluatePicksDetailed)
+**Problem**: Locked picks view just showed player names with a 🎾 emoji — no indication of win/loss/pending.
+
+**Work Done**:
+- Added `classifyPick()` function to `pick-evaluation.ts` — classifies a single pick as win/loss/pending with a reason string (Won match, Won by walkover, Opponent retired, Lost match, Retired from match, Lost by walkover, Awaiting result)
+- Added `evaluatePicksDetailed()` — maps `classifyPick` over all picks, returns `PickOutcome[]`
+- TDD: 12 new tests covering all outcome types
+- Updated picks page server component to query matches when round is locked and compute outcomes
+- Replaced plain locked picks view with color-coded result cards:
+  - Green border + ✅ for wins, with "Correct Pick" badge and reason
+  - Red border + ❌ for losses, with "Strike" badge and reason
+  - Gray border + ⏳ for pending, with "Pending" badge
+- Summary bar shows total correct/strikes when all results are in
+
+**Files Modified**:
+- `lib/services/pick-evaluation.ts` — Added `PickOutcome` type, `classifyPick()`, `evaluatePicksDetailed()`
+- `lib/services/scoring.test.ts` — 12 new tests (39 total)
+- `app/league/[id]/picks/page.tsx` — Match query, outcome computation, result cards UI
+
+#### Clickable Locked Rounds
+**Problem**: Locked rounds on league page showed a static "🔒 Locked" div — no way to view past picks.
+
+**Work Done**:
+- Replaced static locked div with a `<Link>` to the picks page: "📊 View Results"
+- Hover effect transitions to purple theme color
+
+**Files Modified**:
+- `app/league/[id]/page.tsx` — Locked round button → View Results link
+
+#### Mobile Improvements
+**Problem**: Hero text overflows on small screens, standings table too wide, player buttons too small for touch.
+
+**Work Done**:
+- Hero title: `text-6xl` → `text-4xl sm:text-5xl md:text-6xl`
+- Hero subtitle: `text-2xl` → `text-xl sm:text-2xl`
+- Feature cards grid: `md:grid-cols-3` → `sm:grid-cols-2 md:grid-cols-3`
+- Standings "Correct" column: hidden on mobile (`hidden sm:table-cell`)
+- Player grid buttons: `py-2.5` → `py-3` for larger touch targets
+
+**Files Modified**:
+- `app/page.tsx` — Responsive text sizes and grid breakpoint
+- `app/league/[id]/page.tsx` — Hidden Correct column on mobile
+- `components/player-grid.tsx` — Larger touch targets
+
+#### Deployment (Mar 1, 2026)
+- No database migration needed
+- 39 tests passing, TypeScript clean
+- Pushed to GitHub, Vercel auto-deployed
+
 ## Current Status
 - ✅ App deployed and accessible at https://match-point-delta.vercel.app
 - ✅ Database seeded with test data
@@ -439,7 +542,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ Scoring engine bug fixed (multi-round match lookup) with 20 tests
 - ✅ Result correction capability for admin
 - ✅ Auto-bracket generation (reduces manual CSV work from 7 to 1-2 per tournament)
-- ✅ Vitest test framework with 27 passing tests
+- ✅ Player search/filter on picks page
+- ✅ Pick save feedback banners (auto-dismiss)
+- ✅ Live countdown timers on picks and league pages
+- ✅ Per-pick result cards with win/loss/pending status and explanations
+- ✅ Clickable locked rounds ("View Results" link)
+- ✅ Mobile-responsive hero text, hidden Correct column, larger touch targets
+- ✅ Vitest test framework with 39 passing tests
 - ✅ All code deployed and smoke-tested on production
 
 ## Next Steps
@@ -447,5 +556,3 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - Set lock times per round to match actual Indian Wells schedule (main draw ~Mar 9-10)
 - Upload player and R1 match CSVs from draw sheets
 - Create test leagues and invite 2-5 test users
-- Phase 2 (future): Player search/filter, pick feedback, countdown timers
-- Phase 3 (future): Previous round results, scoring explanations, mobile improvements
