@@ -117,17 +117,19 @@ export default async function LeaguePage({
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {!membership ? (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4">Join this league</h2>
-            <p className="text-gray-600 mb-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100 text-center">
+            <span className="text-4xl mb-4 block">🎾</span>
+            <h2 className="text-xl font-light text-gray-900 tracking-wide mb-2">Join this league</h2>
+            <p className="text-gray-600 mb-6">
               You're not a member of this league yet. Join to start making picks and compete!
             </p>
             <form action={`/api/leagues/${id}/join`} method="POST">
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white text-sm font-medium rounded-lg hover:scale-105 hover:shadow-md transition-all duration-300"
               >
-                Join League
+                <span>🏆</span>
+                <span>Join League</span>
               </button>
             </form>
           </div>

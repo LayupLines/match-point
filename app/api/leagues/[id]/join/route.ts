@@ -16,14 +16,14 @@ export async function POST(
 
     const { id: leagueId } = await params
 
-    const league = await joinLeague(session.user.id, leagueId)
+    await joinLeague(session.user.id, leagueId)
 
-    return NextResponse.json({ league }, { status: 200 })
+    // Redirect back to the league page (supports HTML form submissions)
+    return NextResponse.redirect(new URL(`/league/${leagueId}`, req.url))
   } catch (error: any) {
     console.error('Error joining league:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to join league' },
-      { status: 400 }
-    )
+    // Redirect back with error feedback
+    const { id: leagueId } = await params
+    return NextResponse.redirect(new URL(`/league/${leagueId}?error=${encodeURIComponent(error.message || 'Failed to join league')}`, req.url))
   }
 }
