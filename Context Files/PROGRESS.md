@@ -644,9 +644,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ App deployed and accessible at https://match-point-delta.vercel.app
 - ✅ Database seeded with test data
 - ✅ Authentication working (AUTH_SECRET env var fixed)
+- ✅ User registration enabled (any user can create an account at /register)
 - ✅ Modern UI with animations and responsive design
 - ✅ Grass court background texture on all pages
-- ✅ Country flag graphics on player selection
+- ✅ Country flag graphics on player selection (40+ country flags)
 - ✅ shadcn/ui component library integrated with Wimbledon theme (CSS variables fixed)
 - ✅ Variable-size tournament support (Grand Slam, ATP/WTA 1000/500/250)
 - ✅ Tournament operations admin UI (create, manage players/matches, enter results)
@@ -658,13 +659,16 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ Live countdown timers on picks and league pages
 - ✅ Per-pick result cards with win/loss/pending status, explanations, and walkover bonus
 - ✅ Clickable locked rounds ("View Results" link)
+- ✅ Future round locking — only current round open for picks; future rounds show "Not Yet Open"
 - ✅ Mobile-responsive hero text, hidden Correct column, larger touch targets
-- ✅ Pick API fully validated (lock time, membership, elimination, player reuse, pick limits)
+- ✅ Pick API fully validated (lock time, membership, elimination, player reuse, pick limits, future round rejection)
 - ✅ Pick API race condition fixed (atomic transaction for count+create)
 - ✅ Duplicate pick handling (P2002 → friendly 400 instead of 500)
 - ✅ Walkover bonus correctly reflected in both result cards and summary counts
 - ✅ Countdown timer urgency thresholds corrected (<2h = urgent) and sub-minute edge case fixed
 - ✅ Vitest test framework with 39 passing tests
+- ✅ Indian Wells 2026 ATP + WTA tournaments created, configured, and activated with real draw data
+- ✅ Two test leagues created and ready for users
 - ✅ All code deployed and smoke-tested on production
 - ✅ Two full code reviews completed — all critical, medium, and low issues resolved
 - ✅ QUICKSTART.md and README.md updated to reflect current project state
@@ -698,8 +702,59 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - `QUICKSTART.md` — Full rewrite
 - `README.md` — Full rewrite
 
+### Indian Wells 2026 Tournament Setup (Mar 2, 2026)
+**Goal**: Full end-to-end setup for the 2026 BNP Paribas Open (Indian Wells) — both ATP 1000 and WTA 1000 draws.
+
+#### Code Changes
+- **WTA_1000 preset**: Updated from 6 rounds to 7 rounds in `lib/constants.ts` to support Indian Wells/Miami/Beijing 96-player draws (32 byes, same structure as ATP 1000)
+- **Country code mappings**: Added 25 new codes to `lib/utils/country.ts`: FRA, ARG, NED, MON, POR, GBR, HUN, CAN, AUS, BRA, BEL, CRO, BIH, CHI, UKR, SUI, JPN, DEN, ROU, COL, TUR, INA, LAT, PHI, AUT
+- **Flag SVGs**: Created 25 new flag files in `public/flags/` for all new country codes
+
+#### Tournament Creation & Configuration
+- Created **ATP BNP Paribas Open** (MEN, ATP_1000, 2026) — 7 rounds, 96 players, 32 R1 matches
+- Created **WTA BNP Paribas Open** (WOMEN, WTA_1000, 2026) — 7 rounds, 96 players, 32 R1 matches
+- Set lock times for all 14 rounds (R1: Mar 4 18:00 UTC through Final: Mar 15 20:00 UTC)
+- Lock times account for DST transition on March 9 (PST→PDT)
+
+#### Data Uploads
+- **ATP players**: 96 players (32 seeds + 52 named unseeded + 12 qualifiers) from atptour.com draw
+- **WTA players**: 96 players (32 seeds + 27 named unseeded + 37 qualifier placeholders) — partial draw
+- **ATP R1 matches**: 32 matches with bracket positions 1-32
+- **WTA R1 matches**: 32 matches with bracket positions 1-32
+
+#### Leagues & Activation
+- Created "Indian Wells ATP League" and "Indian Wells WTA League"
+- Activated both tournaments (UPCOMING → ACTIVE)
+
+#### Key IDs
+- ATP tournament: `cmma1wmsw00008uujj5u77alz`
+- WTA tournament: `cmma1xsji00088uuju4lwwiv9`
+- ATP league: `cmma2nhuq007k8uuj374nwwaf`
+- WTA league: `cmma2ni41007n8uujreoy7dfw`
+
+**Deployment**: Committed and pushed to GitHub (commit `954e383`), Vercel auto-deployed.
+
+### Future Round Locking (Mar 2, 2026)
+**Goal**: Only allow picks for the current round — future rounds should appear locked.
+
+**Problem**: All unlocked rounds showed "Make Picks" buttons, letting users navigate to and potentially submit picks for any future round.
+
+**Implementation**:
+- **League page** (`app/league/[id]/page.tsx`): Computes `currentRoundIndex` (first unlocked round). Future rounds show grayed-out "Not Yet Open" label with lock icon, reduced opacity, no pulse dot. Current round uses green color scheme; "Closing Soon" text stays orange.
+- **Picks page** (`app/league/[id]/picks/page.tsx`): Fetches all tournament rounds to determine if the requested round is the current one. Future rounds show a "Not Yet Open" block with a "Back to League" link instead of the player grid.
+- **Picks API** (`app/api/picks/route.ts`): Server-side guard queries all tournament rounds, identifies the current round, and rejects submissions to future rounds with a redirect (`feedback=not-open`).
+
+**Definition**: "Current round" = the round with the lowest `roundNumber` where `lockTime > now`.
+
+**Files Modified**:
+- `app/league/[id]/page.tsx` — Three round states: locked (View Results), current (Make Picks), future (Not Yet Open)
+- `app/league/[id]/picks/page.tsx` — Future round detection + block UI
+- `app/api/picks/route.ts` — Server-side future round rejection
+
+**Deployment**: Committed and pushed to GitHub (commit `92aa57e`), Vercel auto-deployed. TypeScript clean, 39 tests passing.
+
 ## Next Steps
-- Create Indian Wells tournaments (ATP 1000 Men's + WTA 1000 Women's) via admin UI once draws are published
-- Set lock times per round to match actual Indian Wells schedule (main draw ~Mar 9-10)
-- Upload player and R1 match CSVs from draw sheets
-- Create test leagues and invite 2-5 test users
+- Update WTA qualifier placeholders with real player names once full draw is published
+- R2 match setup after R1 completes (Mar 4-5): create R2 CSVs pairing seeds with R1 winners, then auto-bracket from R3 onward
+- Share league join links with 2-5 test users
+- Enter match results via admin as tournament progresses
