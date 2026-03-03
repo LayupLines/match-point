@@ -297,22 +297,28 @@ export default async function PicksPage({
               </div>
 
               {/* Summary */}
-              {pickOutcomes.length > 0 && !pickOutcomes.some(o => o.status === 'pending') && (
-                <div className="mt-6 flex flex-wrap gap-4 justify-center">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full">
-                    <span>✅</span>
-                    <span className="text-sm font-semibold text-wimbledon-green">
-                      {pickOutcomes.filter(o => o.status === 'win').length} correct
-                    </span>
+              {pickOutcomes.length > 0 && !pickOutcomes.some(o => o.status === 'pending') && (() => {
+                const wins = pickOutcomes.filter(o => o.status === 'win').length
+                const bonuses = pickOutcomes.filter(o => o.bonus).length
+                const correctTotal = wins + bonuses
+                const losses = pickOutcomes.filter(o => o.status === 'loss').length
+                return (
+                  <div className="mt-6 flex flex-wrap gap-4 justify-center">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full">
+                      <span>✅</span>
+                      <span className="text-sm font-semibold text-wimbledon-green">
+                        {correctTotal} correct{bonuses > 0 ? ` (incl. ${bonuses} bonus)` : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-red-50 rounded-full">
+                      <span>❌</span>
+                      <span className="text-sm font-semibold text-red-700">
+                        {losses} strike{losses !== 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-red-50 rounded-full">
-                    <span>❌</span>
-                    <span className="text-sm font-semibold text-red-700">
-                      {pickOutcomes.filter(o => o.status === 'loss').length} strike{pickOutcomes.filter(o => o.status === 'loss').length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
-              )}
+                )
+              })()}
             </div>
           </div>
         ) : (

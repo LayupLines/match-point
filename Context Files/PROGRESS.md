@@ -571,7 +571,69 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - `app/league/[id]/picks/page.tsx` — Division by zero guard
 - `app/api/picks/route.ts` — Removed dead import
 
+### Second Code Review & Fixes (Mar 1, 2026)
+**Goal**: Address remaining findings from the second comprehensive review of all Phase 1–3 changes.
+
+#### Fix: Dead Branch in evaluatePicks
+**Problem**: The loss branch in `evaluatePicks()` had an unreachable `else if (match.retiredPlayerId)` path. If the picked player lost (`didPlayerWin === false`) and didn't retire themselves, the `retiredPlayerId` being set would mean the winner retired — a contradiction. This dead branch awarded a `correctPick` for impossible data.
+
+**Work Done**:
+- Simplified loss branch to unconditionally increment `strikes` — if the player didn't win, it's always a strike regardless of retirement/walkover details
+- `classifyPick()` retains full granularity for the UI (distinguishing "Retired from match", "Lost by walkover", "Lost match")
+- All existing tests pass unchanged — the dead branch was never exercised by valid test data
+
+**Files Modified**:
+- `lib/services/pick-evaluation.ts` — Simplified loss handling in `evaluatePicks()`
+
+#### Fix: Action Validation in Pick Form Handler
+**Problem**: If the form `action` field was neither `'add'` nor `'remove'`, the code fell through silently and returned a redirect with misleading `feedback=undefined`.
+
+**Work Done**:
+- Added early validation after field extraction: returns 400 `"Invalid action"` for anything other than `'add'` or `'remove'`
+
+**Files Modified**:
+- `app/api/picks/route.ts` — Action validation before DB operations
+
+#### Fix: Race Condition & Duplicate Pick Handling
+**Problem (TOCTOU)**: The pick count check (`db.pick.count`) and pick creation (`db.pick.create`) were separate queries. Two concurrent requests could both pass the count check and exceed `requiredPicks`.
+
+**Problem (Duplicate)**: The `@@unique([userId, leagueId, roundId, playerId])` constraint would throw a Prisma `P2002` error on duplicate picks, surfacing as a cryptic 500 to the user.
+
+**Work Done**:
+- Wrapped count check + create inside `db.$transaction()` for atomic execution
+- Added `try/catch` around the transaction to handle:
+  - `P2002` unique constraint violations → 400 `"Player already selected for this round"`
+  - Max picks exceeded → 400 `"Maximum picks reached"`
+  - Other errors → re-thrown to outer handler
+
+**Files Modified**:
+- `app/api/picks/route.ts` — Transaction for atomicity, P2002 error handling
+
+#### Fix: Walkover Bonus in Summary Count
+**Problem**: The summary pill showed `pickOutcomes.filter(o => o.status === 'win').length` as "correct" count, but didn't include walkover bonuses. The standings engine counts walkovers as +2 (1 normal + 1 bonus), so the summary was inconsistent.
+
+**Work Done**:
+- Summary now computes `correctTotal = wins + bonuses` to match the standings engine
+- Displays "3 correct (incl. 1 bonus)" when walkover bonuses are present
+- Uses an IIFE in JSX for intermediate variable computation
+
+**Files Modified**:
+- `app/league/[id]/picks/page.tsx` — Summary pill calculates wins + bonuses
+
+#### Fix: Countdown Timer Edge Case
+**Problem**: When less than 60 seconds remained, `Math.floor(diff / 60000)` produced 0, displaying "0m remaining".
+
+**Work Done**:
+- Shows `"< 1m remaining"` when minutes is 0 but the timer hasn't crossed to "Locked"
+
+**Files Modified**:
+- `components/countdown-timer.tsx` — Edge case for sub-minute display
+
 #### Noted for Future (Not Fixed)
+- `round.requiredPicks` fetched outside pick transaction (safe — static config value)
+- "Player already used in a prior round" check outside transaction (low risk with <5 concurrent users)
+- 60-second timer interval means "< 1m remaining" could display for up to ~2 min before "Locked"
+- Redundant retirement win test in scoring.test.ts (harmless duplicate)
 - `toLocaleString()` server-side timezone (acceptable for same-timezone test users)
 - `session.user.id!` non-null assertions (functional with current auth)
 - Sequential DB queries on picks page (premature to optimize)
@@ -598,10 +660,43 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ Clickable locked rounds ("View Results" link)
 - ✅ Mobile-responsive hero text, hidden Correct column, larger touch targets
 - ✅ Pick API fully validated (lock time, membership, elimination, player reuse, pick limits)
-- ✅ Countdown timer urgency thresholds corrected (<2h = urgent)
+- ✅ Pick API race condition fixed (atomic transaction for count+create)
+- ✅ Duplicate pick handling (P2002 → friendly 400 instead of 500)
+- ✅ Walkover bonus correctly reflected in both result cards and summary counts
+- ✅ Countdown timer urgency thresholds corrected (<2h = urgent) and sub-minute edge case fixed
 - ✅ Vitest test framework with 39 passing tests
 - ✅ All code deployed and smoke-tested on production
-- ✅ Full code review completed — critical and medium issues resolved
+- ✅ Two full code reviews completed — all critical, medium, and low issues resolved
+- ✅ QUICKSTART.md and README.md updated to reflect current project state
+
+### Documentation Update (Mar 1, 2026)
+**Goal**: Bring QUICKSTART.md and README.md up to date with all Phase 1–3 changes.
+
+**QUICKSTART.md** — was heavily outdated (wrong project path, missing features, old env var names):
+- Fixed project path (was `/Users/jeremyceille/Desktop/match-point/`)
+- Added production URL and GitHub link
+- Updated env var from `NEXTAUTH_SECRET` to `AUTH_SECRET` (NextAuth v5)
+- Expanded admin capabilities (auto-bracket, result correction, tournament levels)
+- Added test commands (`npm test`, `npx tsc --noEmit`)
+- Updated project structure to match current codebase
+- Improved troubleshooting (Tailwind v4 `@config` requirement)
+
+**README.md** — was written for the initial build and missing most features:
+- Updated title from "Wimbledon Survivor" to "Tennis Survivor Game" (multi-tournament support)
+- Added full feature lists (player search, countdown timers, per-pick results, walkover bonus)
+- Updated tech stack (shadcn/ui, Vitest, Prisma 7, OKLCH colors)
+- Added round structure table for all tournament levels
+- Added scoring rules table with all scenarios including walkover bonus
+- Comprehensive project structure reflecting all current files
+- Full admin guide with tournament lifecycle, CSV formats, auto-bracket workflow
+- Complete API endpoint tables including all admin routes
+- Database schema section with key constraints
+- Testing section with coverage details and strategy
+- Updated deployment and troubleshooting sections
+
+**Files Modified**:
+- `QUICKSTART.md` — Full rewrite
+- `README.md` — Full rewrite
 
 ## Next Steps
 - Create Indian Wells tournaments (ATP 1000 Men's + WTA 1000 Women's) via admin UI once draws are published

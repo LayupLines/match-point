@@ -99,17 +99,8 @@ export function evaluatePicks(
         correctPicks++ // Bonus for walkover advancement
       }
     } else {
-      // Player lost - check if it was a retirement
-      if (match.retiredPlayerId === pick.playerId) {
-        // Picked player retired - this is a strike
-        strikes++
-      } else if (match.retiredPlayerId) {
-        // Opponent retired, picked player advanced - no strike
-        correctPicks++
-      } else {
-        // Normal loss - strike
-        strikes++
-      }
+      // Player lost - always a strike (whether normal loss, retirement, or walkover)
+      strikes++
     }
 
     // Track final round submission time

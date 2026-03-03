@@ -1,108 +1,84 @@
 # Match Point - Quick Start Guide
 
-## You're Almost Ready!
+## Overview
 
-The Match Point application has been successfully built. Here's how to get it running:
+Match Point is a tennis survivor game where users pick players each round and compete to avoid elimination. Supports Grand Slams, ATP 1000/500/250, and WTA 1000/500/250 tournaments.
 
-## Current Project Location
+**Production URL**: https://match-point-delta.vercel.app
+**GitHub**: https://github.com/LayupLines/match-point
 
-The project is located at: `/Users/jeremyceille/Desktop/match-point/`
+## Running Locally
 
-## Next Steps to Run the App
+### Prerequisites
 
-### Option 1: Use Prisma's Local Postgres (Simplest)
+- Node.js 18+ and npm
+- PostgreSQL database (local or cloud)
 
-1. **Open Terminal and navigate to the project:**
-   ```bash
-   cd /Users/jeremyceille/Desktop/match-point
-   ```
+### 1. Install Dependencies
 
-2. **Start Prisma's local PostgreSQL database:**
-   ```bash
-   npx prisma dev
-   ```
-   Keep this terminal window open - it will run the database.
+```bash
+cd "/Users/jeremyceille/Vaults/Match Point"
+npm install
+```
 
-3. **In a NEW terminal window, run the migrations:**
-   ```bash
-   cd /Users/jeremyceille/Desktop/match-point
-   npx prisma migrate dev --name init
-   ```
+### 2. Environment Setup
 
-4. **Seed the database:**
-   ```bash
-   npx prisma db seed
-   ```
+Create a `.env` file with:
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/matchpoint"
+AUTH_SECRET="generate-with-openssl-rand-base64-32"
+CRON_SECRET="your-cron-secret-here"
+```
 
-5. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
+Generate a secure secret:
+```bash
+openssl rand -base64 32
+```
 
-6. **Open your browser:**
-   Go to http://localhost:3000
+> **Note**: NextAuth v5 (beta) uses `AUTH_SECRET`, not `NEXTAUTH_SECRET`.
 
-### Option 2: Use Your Own PostgreSQL Database
+### 3. Database Setup
 
-If you already have PostgreSQL installed:
+```bash
+npx prisma migrate dev
+npx prisma db seed
+```
 
-1. **Create a database:**
-   ```bash
-   createdb matchpoint
-   ```
+### 4. Start the Dev Server
 
-2. **Update the `.env` file:**
-   ```env
-   DATABASE_URL="postgresql://your-username:your-password@localhost:5432/matchpoint?schema=public"
-   ```
+```bash
+npm run dev
+```
 
-3. **Run migrations and seed:**
-   ```bash
-   npx prisma migrate dev --name init
-   npx prisma db seed
-   ```
-
-4. **Start the server:**
-   ```bash
-   npm run dev
-   ```
+Open http://localhost:3000
 
 ## Test Accounts (After Seeding)
 
-- **Admin**: admin@matchpoint.com / admin123
-- **User 1**: user1@example.com / password123
-- **User 2**: user2@example.com / password123
+| Account | Email | Password |
+|---------|-------|----------|
+| Admin | admin@matchpoint.com | admin123 |
+| User 1 | user1@example.com | password123 |
+| User 2 | user2@example.com | password123 |
 
 ## What You Can Do
 
-### As a Regular User:
+### As a Regular User
 1. Register or login
-2. Browse public leagues
+2. Browse and join public leagues
 3. Create your own league
-4. Join existing leagues
-5. Submit picks for upcoming rounds
-6. View standings
+4. Submit picks for upcoming rounds (search/filter 96+ players)
+5. See live countdown timers to round lock times
+6. View per-pick results after rounds lock (win/loss/pending with reasons)
+7. View standings and track strikes
 
-### As an Admin (admin@matchpoint.com):
-1. Create tournaments (Men's/Women's Wimbledon)
+### As an Admin (admin@matchpoint.com)
+1. Create tournaments of any level (Grand Slam, ATP/WTA 1000/500/250)
 2. Upload players via CSV
-3. Enter match results
-4. Trigger manual scoring
-5. View all leagues and users
-
-## Project Structure
-
-```
-/Users/jeremyceille/Desktop/match-point/
-├── app/                 # Next.js pages and API routes
-├── components/          # React components
-├── lib/                 # Business logic and services
-├── prisma/              # Database schema and migrations
-├── types/               # TypeScript definitions
-├── .env                 # Environment variables
-├── README.md            # Full documentation
-└── package.json         # Dependencies
-```
+3. Upload matches via CSV (with optional bracket positions)
+4. Auto-generate next-round bracket matches from completed rounds
+5. Enter and correct match results (wins, walkovers, retirements)
+6. Manage round lock times
+7. Transition tournament status (Upcoming -> Active -> Completed)
 
 ## Common Commands
 
@@ -110,57 +86,91 @@ If you already have PostgreSQL installed:
 # Start development server
 npm run dev
 
-# Run Prisma Studio (visual database editor)
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# TypeScript type check
+npx tsc --noEmit
+
+# Prisma Studio (visual database editor)
 npx prisma studio
 
-# Reset database (warning: deletes all data)
+# Reset database (deletes all data)
 npx prisma migrate reset
 
-# Generate Prisma client after schema changes
-npx prisma generate
+# Deploy migrations to production
+npx prisma migrate deploy
+```
 
-# Create a new migration
-npx prisma migrate dev --name your_migration_name
+## Project Structure
+
+```
+Match Point/
+├── app/                          # Next.js App Router pages
+│   ├── api/                      # API routes (picks, leagues, admin, cron)
+│   ├── admin/                    # Admin pages (tournaments, players, matches, results)
+│   ├── dashboard/                # User dashboard
+│   ├── league/[id]/              # League detail + picks pages
+│   └── page.tsx                  # Landing page
+├── components/                   # React components
+│   ├── admin/                    # Admin client components (forms, panels, buttons)
+│   ├── ui/                       # shadcn/ui components (Button, Card, Badge, etc.)
+│   ├── player-grid.tsx           # Player search/filter grid (client)
+│   └── countdown-timer.tsx       # Live countdown timer (client)
+├── lib/                          # Core business logic
+│   ├── services/                 # Business logic (scoring, picks, brackets, tournaments)
+│   │   ├── pick-evaluation.ts    # Pure scoring logic (no DB dependency)
+│   │   ├── scoring.ts            # Scoring engine (DB orchestration)
+│   │   ├── scoring.test.ts       # 32 scoring tests
+│   │   ├── bracket.ts            # Auto-bracket generation
+│   │   └── bracket.test.ts       # 7 bracket tests
+│   ├── validation/               # Zod schemas
+│   ├── utils/                    # Utilities (CSV, dates, country flags)
+│   ├── auth.ts                   # NextAuth v5 config
+│   ├── db.ts                     # Prisma client
+│   └── constants.ts              # Round presets per tournament level
+├── prisma/
+│   ├── schema.prisma             # Database schema
+│   ├── migrations/               # Migration files
+│   └── seed.ts                   # Seed script
+├── public/
+│   ├── flags/                    # Country flag SVGs
+│   └── grass-court.jpg           # Background texture
+└── Context Files/                # Development documentation
+    └── PROGRESS.md               # Detailed development history
 ```
 
 ## Troubleshooting
 
-### Database Connection Issues
-- Make sure `npx prisma dev` is running in a separate terminal
-- Check that the DATABASE_URL in `.env` is correct
-- Try running `npx prisma generate` if you get client errors
+### "Invalid email or password" on login
+- Check that `AUTH_SECRET` (not `NEXTAUTH_SECRET`) is set in your environment
+- Verify the database is seeded: `npx prisma db seed`
 
-### Module Not Found Errors
-```bash
-npm install
-npx prisma generate
-```
+### Database connection errors
+- Check `DATABASE_URL` in `.env`
+- Ensure PostgreSQL is running
+- Try `npx prisma generate` if you get client errors
 
-### Port Already in Use
+### Build errors
+- Run `npx tsc --noEmit` to find TypeScript issues
+- Run `npm run build` to check the full build
+- Ensure `@config "../tailwind.config.ts"` is in `app/globals.css` (Tailwind v4 requirement)
+
+### Port already in use
 ```bash
-# Kill the process on port 3000
 lsof -ti:3000 | xargs kill -9
-
-# Or use a different port
+# Or use a different port:
 npm run dev -- -p 3001
 ```
 
-## Need Help?
+## Full Documentation
 
-Check the full documentation in `README.md` for:
-- Complete API documentation
-- Game rules explanation
-- Deployment instructions
+See `README.md` for complete documentation including:
+- Game rules and scoring details
+- API endpoint reference
 - Admin operations guide
 - CSV format specifications
-
-## What's Next?
-
-Once the app is running:
-
-1. **Test the user flow**: Register → Create/Join League → Submit Picks
-2. **Test admin functions**: Create tournament → Upload players → Enter results
-3. **Check standings**: Verify scoring calculations work correctly
-4. **Customize**: Modify colors, add features, adjust game rules
-
-Enjoy your Wimbledon Survivor game!
+- Deployment instructions

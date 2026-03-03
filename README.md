@@ -1,27 +1,44 @@
-# Match Point - Wimbledon Survivor Tennis Game
+# Match Point - Tennis Survivor Game
 
-A full-stack web application for running Wimbledon survivor-style tennis leagues where users pick players each round and compete to avoid elimination.
+A full-stack web application for running tennis survivor-style leagues. Users pick players each round and compete to avoid elimination. Supports multiple tournament formats from Grand Slams to ATP/WTA 250s.
+
+**Production**: https://match-point-delta.vercel.app
+**Repository**: https://github.com/LayupLines/match-point
 
 ## Features
 
-- **Dual Tournament Support**: Separate Men's and Women's Wimbledon tournaments
-- **Public Leagues**: Browse and join any league or create your own
-- **Multi-Pick Rounds**: Pick 4 players in Round 1, narrowing down each round (4→3→2→2→1→1→1)
-- **Strike System**: Two incorrect picks = elimination
+### Player Experience
+- **Multi-Tournament Support**: Grand Slams, ATP 1000/500/250, WTA 1000/500/250 with tailored pick counts per level
+- **Player Search & Filter**: Search 96+ players by name or country in a responsive grid
+- **Live Countdown Timers**: Color-coded urgency (green > orange < 24h > red+pulse < 2h > locked)
+- **Per-Pick Result Cards**: Win/loss/pending status with detailed reasons (walkover, retirement, etc.)
+- **Walkover Bonus Display**: Correct pick + bonus indicator matching standings engine
+- **Pick Save Feedback**: Auto-dismissing banners confirm selections
+- **Standings & Rankings**: Live standings with strike tracking, correct pick counts, and elimination status
+- **Mobile-Responsive**: Adaptive layouts, hidden columns on small screens, touch-friendly targets
+
+### Admin Experience
+- **Tournament Operations**: Full lifecycle management (create, activate, complete)
+- **CSV Uploads**: Bulk player and match imports
+- **Auto-Bracket Generation**: Generates next-round matches from completed round results
+- **Result Entry & Correction**: Enter results with walkover/retirement toggles, correct mistakes
+- **Round Lock Time Management**: Inline datetime editors per round
+
+### Game Rules
 - **No Re-Use Rule**: Players can only be picked once per tournament
-- **Lock Times**: Picks automatically lock when the round starts
-- **Special Cases**: Proper handling of walkovers and retirements
-- **Real-Time Scoring**: Immediate updates when admin enters results + nightly recalculation
-- **Mobile-First Design**: Fully responsive interface
+- **Strike System**: 2 strikes = elimination
+- **Special Cases**: Walkovers grant a bonus correct pick; retirements handled correctly
+- **Tiebreakers**: Fewest strikes > most correct picks > earliest final round submission
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15 (App Router), React 19, TypeScript, TailwindCSS
-- **Backend**: Next.js API Routes, NextAuth.js v5
-- **Database**: PostgreSQL with Prisma ORM
-- **Deployment**: Vercel + Neon/Supabase PostgreSQL
-- **Validation**: Zod
-- **Password Hashing**: bcrypt
+- **Framework**: Next.js 15 (App Router), React 19, TypeScript
+- **Styling**: TailwindCSS v4, shadcn/ui (OKLCH color format, Wimbledon theme)
+- **Database**: PostgreSQL (Neon) with Prisma 7 ORM
+- **Auth**: NextAuth v5 (beta) with JWT sessions (`AUTH_SECRET` env var)
+- **Validation**: Zod v4
+- **Testing**: Vitest (39 tests: 32 scoring + 7 bracket)
+- **Deployment**: Vercel with auto-deploy on GitHub push
 
 ## Getting Started
 
@@ -33,52 +50,44 @@ A full-stack web application for running Wimbledon survivor-style tennis leagues
 ### 1. Clone and Install
 
 ```bash
+git clone https://github.com/LayupLines/match-point.git
 cd match-point
 npm install
 ```
 
-### 2. Database Setup
-
-Create a PostgreSQL database and add the connection string to `.env`:
+### 2. Environment Setup
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and set:
-```
+Edit `.env`:
+```env
 DATABASE_URL="postgresql://user:password@localhost:5432/matchpoint"
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="generate-with-openssl-rand-base64-32"
+AUTH_SECRET="generate-with-openssl-rand-base64-32"
 CRON_SECRET="your-cron-secret-here"
 ```
 
-Generate a secure NextAuth secret:
+> **Important**: NextAuth v5 uses `AUTH_SECRET`, not `NEXTAUTH_SECRET`.
+
+Generate a secure secret:
 ```bash
 openssl rand -base64 32
 ```
 
-### 3. Run Migrations
+### 3. Database Setup
 
 ```bash
-npx prisma migrate dev --name init
-```
-
-### 4. Seed the Database
-
-```bash
+npx prisma migrate dev
 npx prisma db seed
 ```
 
 This creates:
-- Admin user: `admin@matchpoint.com` / `admin123`
+- Admin: `admin@matchpoint.com` / `admin123`
 - Test users: `user1@example.com` / `password123`, `user2@example.com` / `password123`
-- Men's and Women's Wimbledon 2026 tournaments
-- 128 players for each tournament
-- 7 rounds for each tournament
-- Sample leagues
+- Sample tournaments, players, rounds, and leagues
 
-### 5. Run the Development Server
+### 4. Run the Development Server
 
 ```bash
 npm run dev
@@ -86,235 +95,252 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
+## Round Structure by Tournament Level
+
+| Level | Rounds | Pick Requirements |
+|-------|--------|------------------|
+| Grand Slam | 7 | 4 / 3 / 2 / 2 / 1 / 1 / 1 |
+| ATP 1000 | 7 | 3 / 2 / 2 / 1 / 1 / 1 / 1 |
+| WTA 1000 | 6 | 3 / 2 / 1 / 1 / 1 / 1 |
+| ATP/WTA 500 | 5 | 2 / 2 / 1 / 1 / 1 |
+| ATP/WTA 250 | 5 | 2 / 2 / 1 / 1 / 1 |
+
+## Scoring Rules
+
+| Scenario | Result |
+|----------|--------|
+| Picked player wins match | Correct pick (no strike) |
+| Picked player loses match | 1 strike |
+| Picked player wins by walkover | Correct pick + 1 bonus |
+| Picked player's opponent retires | Correct pick (no strike) |
+| Picked player retires | 1 strike |
+| Picked player loses by walkover | 1 strike |
+| **2 total strikes** | **Eliminated** |
+
+### Tiebreakers (in order)
+1. Fewest strikes
+2. Most correct picks (including walkover bonuses)
+3. Earliest final round submission time
+
 ## Project Structure
 
 ```
 match-point/
-├── app/                          # Next.js App Router pages
-│   ├── api/                      # API routes
-│   │   ├── auth/                # NextAuth endpoints
-│   │   ├── leagues/             # League management
-│   │   ├── picks/               # Pick submission
-│   │   ├── admin/               # Admin operations
-│   │   └── cron/                # Scheduled scoring
-│   ├── (pages)/                 # Frontend pages
-│   ├── globals.css              # Global styles
-│   └── layout.tsx               # Root layout
-├── components/                   # React components
-├── lib/                          # Core business logic
-│   ├── services/                # Business logic services
-│   │   ├── scoring.ts           # Scoring engine
-│   │   ├── picks.ts             # Pick validation
-│   │   ├── league.ts            # League management
-│   │   └── tournament.ts        # Tournament operations
-│   ├── validation/              # Zod schemas
-│   ├── utils/                   # Utilities (CSV, dates)
-│   ├── auth.ts                  # NextAuth config
-│   ├── db.ts                    # Prisma client
-│   └── constants.ts             # Game constants
+├── app/
+│   ├── api/
+│   │   ├── auth/                  # NextAuth endpoints
+│   │   ├── leagues/               # League CRUD + join
+│   │   ├── picks/                 # Pick submission (form + JSON)
+│   │   ├── admin/
+│   │   │   ├── tournaments/       # Tournament CRUD, players, matches
+│   │   │   ├── matches/           # Result entry
+│   │   │   ├── rounds/            # Lock time management
+│   │   │   └── scoring/           # Manual scoring trigger
+│   │   └── cron/                  # Nightly scoring
+│   ├── admin/                     # Admin pages
+│   │   ├── layout.tsx             # Auth guard (ADMIN role) + nav header
+│   │   ├── page.tsx               # Tournament dashboard
+│   │   ├── results/               # Result entry page
+│   │   └── tournaments/[id]/      # Tournament detail, players, matches
+│   ├── dashboard/                 # User dashboard
+│   ├── league/[id]/               # League detail page
+│   │   └── picks/                 # Picks page with results
+│   └── page.tsx                   # Landing page
+├── components/
+│   ├── admin/                     # Admin client components
+│   │   ├── create-tournament-form.tsx
+│   │   ├── result-entry-panel.tsx  # Result entry with correction
+│   │   ├── generate-round-button.tsx # Auto-bracket trigger
+│   │   ├── status-controls.tsx
+│   │   ├── lock-time-editor.tsx
+│   │   ├── player-upload-form.tsx
+│   │   └── match-upload-form.tsx
+│   ├── ui/                        # shadcn/ui components
+│   │   ├── button.tsx, card.tsx, input.tsx, label.tsx, badge.tsx, alert.tsx
+│   ├── player-grid.tsx            # Searchable player grid (client)
+│   └── countdown-timer.tsx        # Live countdown timer (client)
+├── lib/
+│   ├── services/
+│   │   ├── pick-evaluation.ts     # Pure scoring logic (classifyPick, evaluatePicks)
+│   │   ├── scoring.ts             # DB-backed scoring engine
+│   │   ├── scoring.test.ts        # 32 scoring tests
+│   │   ├── bracket.ts             # pairWinnersForNextRound()
+│   │   ├── bracket.test.ts        # 7 bracket tests
+│   │   ├── picks.ts               # Pick submission service
+│   │   ├── league.ts              # League service
+│   │   └── tournament.ts          # Tournament + match services
+│   ├── validation/schemas.ts      # Zod validation schemas
+│   ├── utils/
+│   │   ├── csv.ts                 # CSV parsing (players, matches)
+│   │   ├── dates.ts               # Date formatting
+│   │   └── country.ts             # Country code mapping + flag paths
+│   ├── auth.ts                    # NextAuth v5 config
+│   ├── db.ts                      # Prisma client
+│   └── constants.ts               # ROUND_PRESETS per tournament level
 ├── prisma/
-│   ├── schema.prisma            # Database schema
-│   └── seed.ts                  # Seed script
-└── types/                        # TypeScript types
+│   ├── schema.prisma              # Full database schema
+│   ├── migrations/                # SQL migrations
+│   └── seed.ts                    # Database seed script
+├── public/
+│   ├── flags/                     # Country flag SVGs (16 files)
+│   └── grass-court.jpg            # Background texture
+├── vitest.config.ts               # Test configuration
+├── tailwind.config.ts             # Tailwind + Wimbledon theme colors
+└── Context Files/
+    └── PROGRESS.md                # Detailed development history
 ```
-
-## Game Rules
-
-### Round Structure
-- **Round 1**: 4 picks required
-- **Round 2**: 3 picks required
-- **Round 3**: 2 picks required
-- **Round of 16**: 2 picks required
-- **Quarterfinals**: 1 pick required
-- **Semifinals**: 1 pick required
-- **Final**: 1 pick required
-
-### Scoring
-- **Correct Pick**: Player wins their match → No strike
-- **Incorrect Pick**: Player loses → 1 strike
-- **Walkover**: Player advances without playing → WIN (no strike)
-- **Retirement**:
-  - If your player retires → STRIKE
-  - If opponent retires (your player advances) → WIN (no strike)
-
-### Elimination
-- **2 strikes** = Eliminated from league
-- Eliminated users can still view standings but cannot make new picks
-
-### Tiebreakers (in order)
-1. Fewest strikes
-2. Most correct picks
-3. Earliest final round submission time
 
 ## Admin Guide
 
-### Creating a Tournament
+### Tournament Lifecycle
 
-1. Login as admin
-2. Navigate to `/admin/tournaments`
-3. Click "Create Tournament"
-4. Fill in:
-   - Name: e.g., "Wimbledon Men's Singles 2026"
-   - Year: 2026
-   - Gender: MEN or WOMEN
+1. **Create** tournament via admin dashboard (select level: Grand Slam, ATP 1000, etc.)
+2. **Upload players** via CSV: `name,seed,country` (seed and country optional)
+3. **Upload R1 matches** via CSV: `player1,player2,roundNumber[,bracketPosition]`
+4. **Set lock times** per round to match the real tournament schedule
+5. **Activate** tournament when ready for users
+6. **Enter results** as matches complete (admin results page)
+7. **Auto-generate** next round brackets once all matches in a round are done
+8. **Complete** tournament when finished
 
-### Uploading Players
+### CSV Formats
 
-CSV Format:
-```
+**Players CSV:**
+```csv
 name,seed,country
 Novak Djokovic,1,SRB
 Carlos Alcaraz,2,ESP
 Unseeded Player,,USA
 ```
 
-API: `POST /api/admin/tournaments/[id]/players`
-```json
-{
-  "csvData": "name,seed,country\nNovak Djokovic,1,SRB\n..."
-}
+**Matches CSV:**
+```csv
+player1,player2,roundNumber,bracketPosition
+Novak Djokovic,Qualifier 1,1,1
+Carlos Alcaraz,Qualifier 2,1,2
 ```
 
-### Entering Match Results
-
-API: `PUT /api/admin/matches/[matchId]/result`
-```json
-{
-  "winnerId": "player-id-here",
-  "isWalkover": false,
-  "retiredPlayerId": "player-id-if-retired"
-}
-```
-
-This triggers immediate scoring recalculation for all affected leagues.
-
-### Manual Scoring Trigger
-
-API: `POST /api/admin/scoring`
-
-Recalculates all standings for active tournaments.
-
-## Deployment
-
-### Vercel + Neon/Supabase
-
-1. **Create a Neon or Supabase PostgreSQL database**
-
-2. **Deploy to Vercel:**
-   ```bash
-   vercel
-   ```
-
-3. **Set environment variables in Vercel:**
-   - `DATABASE_URL`
-   - `NEXTAUTH_URL` (your production domain)
-   - `NEXTAUTH_SECRET`
-   - `CRON_SECRET`
-
-4. **Run migrations in production:**
-   ```bash
-   npx prisma migrate deploy
-   ```
-
-5. **Seed the database:**
-   ```bash
-   npx prisma db seed
-   ```
-
-6. **Vercel Cron** will automatically run nightly scoring at 3 AM UTC (configured in `vercel.json`)
+### Auto-Bracket Workflow (ATP 1000 example)
+- Upload R1 CSV + R2 CSV (32 seeds have first-round byes)
+- R3 through R7: click "Generate Next Round" after each round completes
+- Saves 5 manual CSV uploads per tournament
 
 ## API Endpoints
 
 ### Public
-- `GET /api/leagues` - Browse all public leagues
-- `GET /api/leagues/[id]` - Get league details
-- `GET /api/leagues/[id]/standings` - View standings
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/leagues` | Browse all public leagues |
+| GET | `/api/leagues/[id]` | League details |
+| GET | `/api/leagues/[id]/standings` | View standings |
 
 ### Authenticated
-- `POST /api/register` - Create account
-- `POST /api/leagues` - Create league
-- `POST /api/leagues/[id]/join` - Join league
-- `POST /api/picks` - Submit picks
-- `GET /api/picks?leagueId=X` - View my picks
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/register` | Create account |
+| POST | `/api/leagues` | Create league |
+| POST | `/api/leagues/[id]/join` | Join league |
+| POST | `/api/picks` | Submit picks (form data or JSON) |
+| GET | `/api/picks?leagueId=X` | View my picks |
 
 ### Admin Only
-- `POST /api/admin/tournaments` - Create tournament
-- `POST /api/admin/tournaments/[id]/players` - Upload players
-- `PUT /api/admin/matches/[id]/result` - Enter result
-- `POST /api/admin/scoring` - Manual scoring
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/admin/tournaments` | Create tournament |
+| GET | `/api/admin/tournaments/[id]` | Tournament detail |
+| PUT | `/api/admin/tournaments/[id]/status` | Update status |
+| POST | `/api/admin/tournaments/[id]/players` | Upload players CSV |
+| GET/POST | `/api/admin/tournaments/[id]/matches` | Get/create matches |
+| PUT | `/api/admin/matches/[id]/result` | Enter/correct result |
+| PUT | `/api/admin/rounds/[id]/lock-time` | Update lock time |
+| POST | `/api/admin/tournaments/[id]/rounds/[roundId]/generate` | Auto-generate bracket |
+| POST | `/api/admin/scoring` | Manual scoring trigger |
 
 ### Cron
-- `GET /api/cron/scoring` - Nightly scoring (requires `CRON_SECRET`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/cron/scoring` | Nightly scoring (requires `CRON_SECRET`) |
 
 ## Database Schema
 
-### Core Models
-- **User** - Authentication and user profiles
-- **Tournament** - Tournament instances (Men's/Women's, year, status)
-- **Round** - 7 rounds per tournament with lock times
-- **Player** - Tennis players (name, seed, country)
-- **Match** - Individual matches with results
-- **League** - Public leagues
-- **LeagueMembership** - Users in leagues
-- **Pick** - User picks (user + league + round + player)
-- **Standings** - Calculated standings (strikes, eliminations, ranks)
+### Models
+| Model | Purpose |
+|-------|---------|
+| **User** | Authentication, roles (USER/ADMIN) |
+| **Tournament** | Tournament instances with level (Grand Slam, ATP 1000, etc.) and status |
+| **Round** | Rounds per tournament with lock times and required pick counts |
+| **Player** | Tennis players (name, seed, country) scoped to tournament |
+| **Match** | Matches with results, walkover/retirement flags, bracket positions |
+| **League** | Public leagues tied to tournaments |
+| **LeagueMembership** | User-league relationships |
+| **Pick** | User picks (unique per user+league+round+player) |
+| **Standings** | Calculated standings (strikes, correct picks, elimination, rank) |
 
-## Development
-
-### Running Prisma Studio
-```bash
-npx prisma studio
-```
-
-### Resetting Database
-```bash
-npx prisma migrate reset
-```
-
-### Type Generation
-```bash
-npx prisma generate
-```
+### Key Constraints
+- `Pick` has `@@unique([userId, leagueId, roundId, playerId])` — prevents duplicate picks
+- `Match` has `@@unique([roundId, bracketPosition])` — ensures bracket integrity
+- `Tournament` has `@@unique([year, gender, level])` — prevents duplicate tournaments
+- `Round` has `@@unique([tournamentId, roundNumber])` — one round per number
 
 ## Testing
 
-### End-to-End Test Flow
+### Running Tests
+```bash
+# Run all tests
+npm test
 
-1. Register 2 test users
-2. Create a league for Men's Wimbledon 2026
-3. Both users join the league
-4. Submit picks for Round 1 (4 players each)
-5. Login as admin
-6. Enter match results (mix of wins, losses, retirements)
-7. Verify standings update correctly
-8. Check strike counting and elimination logic
-9. Test tiebreakers with users having same strikes
+# Watch mode
+npm run test:watch
+
+# TypeScript check
+npx tsc --noEmit
+```
+
+### Test Coverage (39 tests)
+
+**Scoring tests (32)**: Normal wins/losses, walkovers (bonus), retirements, bye players, partial results, multi-round scoring, final round tracking, per-pick classification (`classifyPick`), detailed evaluation (`evaluatePicksDetailed`).
+
+**Bracket tests (7)**: Simple pairing, odd-number handling, bracket position ordering, single match, large bracket, empty input.
+
+### Testing Strategy
+- Pure functions extracted from DB-dependent code for unit testing without mocking
+- `pick-evaluation.ts` (pure) is tested directly; `scoring.ts` (DB orchestration) delegates to it
+- `bracket.ts` (pure) is tested directly; `tournament.ts` uses it for DB operations
+
+## Deployment
+
+### Production Setup (Vercel + Neon)
+
+1. Push to GitHub (`main` branch)
+2. Vercel auto-deploys on push
+3. Required environment variables in Vercel:
+   - `DATABASE_URL` — Neon PostgreSQL connection string
+   - `AUTH_SECRET` — NextAuth v5 secret key
+   - `CRON_SECRET` — Secret for cron job authentication
+
+4. Run migrations on production:
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+5. Vercel Cron runs nightly scoring at 3 AM UTC (configured in `vercel.json`)
 
 ## Troubleshooting
 
-### Prisma Client Issues
-```bash
-npx prisma generate
-```
+### Auth Issues
+- Ensure `AUTH_SECRET` (not `NEXTAUTH_SECRET`) is set — NextAuth v5 breaking change
+- Check database is reachable from your environment
 
-### Database Connection Errors
+### CSS/Styling Issues
+- Tailwind v4 requires `@config "../tailwind.config.ts"` in `globals.css`
+- CSS variables must be inside `@layer base { ... }` for Tailwind v4
+- Wimbledon theme colors use OKLCH format
+
+### Database Issues
 - Check `DATABASE_URL` in `.env`
-- Ensure PostgreSQL is running
-- Verify database exists
-
-### NextAuth Session Issues
-- Ensure `NEXTAUTH_SECRET` is set
-- Check `NEXTAUTH_URL` matches your domain
-
-### Cron Job Not Running
-- Verify `vercel.json` is committed
-- Check Vercel dashboard > Cron Jobs
-- Ensure `CRON_SECRET` matches
+- Run `npx prisma generate` after schema changes
+- Use `npx prisma studio` to inspect data visually
 
 ## License
 
 MIT
-
-## Support
-
-For issues or questions, please open an issue on GitHub.

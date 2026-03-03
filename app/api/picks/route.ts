@@ -52,6 +52,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
       }
 
+      if (action !== 'add' && action !== 'remove') {
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+      }
+
       const { db } = await import('@/lib/db')
 
       // Validate membership
@@ -97,23 +101,36 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Player already used in a prior round' }, { status: 400 })
         }
 
-        // Check not exceeding required picks
-        const currentPickCount = await db.pick.count({
-          where: { userId: session.user.id!, leagueId, roundId },
-        })
-        if (currentPickCount >= round.requiredPicks) {
-          return NextResponse.json({ error: 'Maximum picks reached' }, { status: 400 })
-        }
+        // Atomic check+create inside a transaction to prevent race conditions
+        try {
+          await db.$transaction(async (tx) => {
+            const currentPickCount = await tx.pick.count({
+              where: { userId: session.user.id!, leagueId, roundId },
+            })
+            if (currentPickCount >= round.requiredPicks) {
+              throw new Error('Maximum picks reached')
+            }
 
-        await db.pick.create({
-          data: {
-            userId: session.user.id!,
-            leagueId,
-            roundId,
-            playerId,
-          },
-        })
-      } else if (action === 'remove') {
+            await tx.pick.create({
+              data: {
+                userId: session.user.id!,
+                leagueId,
+                roundId,
+                playerId,
+              },
+            })
+          })
+        } catch (err: any) {
+          // Handle unique constraint violation (duplicate pick)
+          if (err?.code === 'P2002') {
+            return NextResponse.json({ error: 'Player already selected for this round' }, { status: 400 })
+          }
+          if (err?.message === 'Maximum picks reached') {
+            return NextResponse.json({ error: 'Maximum picks reached' }, { status: 400 })
+          }
+          throw err
+        }
+      } else {
         // Remove pick
         await db.pick.deleteMany({
           where: {

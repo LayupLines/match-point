@@ -21,6 +21,31 @@ const COUNTRY_CODE_MAP: Record<string, string> = {
   TUN: 'tn',  // Tunisia
   CHN: 'cn',  // China
   CZE: 'cz',  // Czech Republic
+  FRA: 'fr',  // France
+  ARG: 'ar',  // Argentina
+  NED: 'nl',  // Netherlands
+  MON: 'mc',  // Monaco
+  POR: 'pt',  // Portugal
+  GBR: 'gb',  // Great Britain
+  HUN: 'hu',  // Hungary
+  CAN: 'ca',  // Canada
+  AUS: 'au',  // Australia
+  BRA: 'br',  // Brazil
+  BEL: 'be',  // Belgium
+  CRO: 'hr',  // Croatia
+  BIH: 'ba',  // Bosnia and Herzegovina
+  CHI: 'cl',  // Chile
+  UKR: 'ua',  // Ukraine
+  SUI: 'ch',  // Switzerland
+  JPN: 'jp',  // Japan
+  DEN: 'dk',  // Denmark
+  ROU: 'ro',  // Romania
+  COL: 'co',  // Colombia
+  TUR: 'tr',  // Turkey
+  INA: 'id',  // Indonesia
+  LAT: 'lv',  // Latvia
+  PHI: 'ph',  // Philippines
+  AUT: 'at',  // Austria
   XXX: 'xx',  // Unknown/placeholder
 }
 
@@ -61,6 +86,31 @@ export function getCountryName(countryCode: string | null | undefined): string {
     TUN: 'Tunisia',
     CHN: 'China',
     CZE: 'Czech Republic',
+    FRA: 'France',
+    ARG: 'Argentina',
+    NED: 'Netherlands',
+    MON: 'Monaco',
+    POR: 'Portugal',
+    GBR: 'Great Britain',
+    HUN: 'Hungary',
+    CAN: 'Canada',
+    AUS: 'Australia',
+    BRA: 'Brazil',
+    BEL: 'Belgium',
+    CRO: 'Croatia',
+    BIH: 'Bosnia and Herzegovina',
+    CHI: 'Chile',
+    UKR: 'Ukraine',
+    SUI: 'Switzerland',
+    JPN: 'Japan',
+    DEN: 'Denmark',
+    ROU: 'Romania',
+    COL: 'Colombia',
+    TUR: 'Turkey',
+    INA: 'Indonesia',
+    LAT: 'Latvia',
+    PHI: 'Philippines',
+    AUT: 'Austria',
     XXX: 'Unknown',
   }
 

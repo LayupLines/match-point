@@ -49,3 +49,4 @@ Thumbs.db
 
 # typescript build info
 tsconfig.tsbuildinfo
+.env*.local

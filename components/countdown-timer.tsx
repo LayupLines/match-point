@@ -26,7 +26,7 @@ function formatCountdown(lockTime: Date): { text: string; urgency: 'normal' | 's
     return { text: `${hours}h ${remainingMinutes}m remaining`, urgency: hours < 2 ? 'urgent' : 'soon' }
   }
 
-  return { text: `${minutes}m remaining`, urgency: 'urgent' }
+  return { text: minutes > 0 ? `${minutes}m remaining` : '< 1m remaining', urgency: 'urgent' }
 }
 
 export function CountdownTimer({
