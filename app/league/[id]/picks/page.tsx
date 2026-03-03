@@ -79,9 +79,18 @@ export default async function PicksPage({
     redirect(`/league/${leagueId}`)
   }
 
-  // Check if round is locked
+  // Check if round is locked or future (not yet open)
   const now = new Date()
   const isLocked = new Date(round.lockTime) < now
+
+  // Determine if this is a future round (not the current one)
+  const allRounds = await db.round.findMany({
+    where: { tournamentId: league.tournamentId },
+    orderBy: { roundNumber: 'asc' },
+    select: { id: true, roundNumber: true, lockTime: true },
+  })
+  const currentRound = allRounds.find(r => new Date(r.lockTime) > now)
+  const isFutureRound = !isLocked && currentRound && round.roundNumber > currentRound.roundNumber
 
   // Get existing picks for this round
   const existingPicks = await db.pick.findMany({
@@ -215,6 +224,21 @@ export default async function PicksPage({
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-red-800 mb-2">You've been eliminated</h2>
             <p className="text-red-700">You can no longer make picks in this league.</p>
+          </div>
+        ) : isFutureRound ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 text-center">
+            <span className="text-4xl mb-4 block">🔒</span>
+            <h2 className="text-xl font-light text-gray-800 mb-2 tracking-wide">Not Yet Open</h2>
+            <p className="text-gray-600 mb-6">
+              This round is not yet open for picks. Complete your picks for <strong>{currentRound?.roundNumber ? allRounds.find(r => r.id === currentRound.id) ? `the current round` : 'the current round' : 'the current round'}</strong> first.
+            </p>
+            <Link
+              href={`/league/${leagueId}`}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white text-sm font-medium rounded-lg hover:scale-105 hover:shadow-md transition-all duration-300"
+            >
+              <span>←</span>
+              <span>Back to League</span>
+            </Link>
           </div>
         ) : isLocked && existingPicks.length === 0 ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">

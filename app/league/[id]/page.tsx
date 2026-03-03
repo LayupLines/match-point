@@ -141,73 +141,79 @@ export default async function LeaguePage({
               </div>
               <div className="p-4 sm:p-6">
                 <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {league.tournament.rounds.map((round, index) => {
+                  {(() => {
                     const now = new Date()
-                    const lockTime = new Date(round.lockTime)
-                    const isLocked = lockTime < now
-                    const timeUntilLock = lockTime.getTime() - now.getTime()
-                    const isClosingSoon = !isLocked && timeUntilLock < 2 * 24 * 60 * 60 * 1000
+                    const currentRoundIndex = league.tournament.rounds.findIndex(
+                      r => new Date(r.lockTime) > now
+                    )
 
-                    return (
-                      <div
-                        key={round.id}
-                        className={`border-2 rounded-xl p-5 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-in fade-in slide-in-from-bottom-4 ${
-                          isLocked
-                            ? 'border-gray-200 bg-gray-50/50'
-                            : isClosingSoon
-                            ? 'border-status-closing/40 bg-gradient-to-br from-orange-50 to-white'
-                            : 'border-wimbledon-green/40 bg-gradient-to-br from-green-50 to-white'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <h3 className="font-light text-lg sm:text-xl text-gray-900 tracking-wide mb-2">{round.name}</h3>
-                            <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                              <span className="text-wimbledon-purple">📋</span>
-                              <span>{round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required</span>
+                    return league.tournament.rounds.map((round, index) => {
+                      const lockTime = new Date(round.lockTime)
+                      const isLocked = lockTime < now
+                      const timeUntilLock = lockTime.getTime() - now.getTime()
+                      const isClosingSoon = !isLocked && timeUntilLock < 2 * 24 * 60 * 60 * 1000
+                      const isFuture = !isLocked && currentRoundIndex >= 0 && index > currentRoundIndex
+
+                      return (
+                        <div
+                          key={round.id}
+                          className={`border-2 rounded-xl p-5 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 ${
+                            isLocked
+                              ? 'border-gray-200 bg-gray-50/50 hover:shadow-lg hover:scale-[1.02]'
+                              : isFuture
+                              ? 'border-gray-200 bg-gray-50/50 opacity-60'
+                              : 'border-wimbledon-green/40 bg-gradient-to-br from-green-50 to-white hover:shadow-lg hover:scale-[1.02]'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <h3 className="font-light text-lg sm:text-xl text-gray-900 tracking-wide mb-2">{round.name}</h3>
+                              <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                                <span className="text-wimbledon-purple">📋</span>
+                                <span>{round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required</span>
+                              </div>
                             </div>
+                            {!isLocked && !isFuture && (
+                              <div className="w-3 h-3 rounded-full bg-wimbledon-green animate-pulse"></div>
+                            )}
                           </div>
-                          {!isLocked && (
-                            <div className={`w-3 h-3 rounded-full ${
-                              isClosingSoon ? 'bg-status-closing' : 'bg-wimbledon-green'
-                            } animate-pulse`}></div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-4 pb-4 border-b border-gray-200">
-                          <span>🕒</span>
-                          <CountdownTimer lockTime={round.lockTime.toISOString()} className="font-medium" />
-                        </div>
-                        {isLocked ? (
-                          <Link
-                            href={`/league/${id}/picks?round=${round.id}`}
-                            className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs bg-gray-200 text-gray-600 uppercase tracking-wider rounded-lg hover:bg-wimbledon-purple/10 hover:text-wimbledon-purple transition-all duration-300"
-                          >
-                            <span>📊</span>
-                            <span>View Results</span>
-                          </Link>
-                        ) : (
-                          <>
+                          <div className="flex items-center gap-2 text-xs text-gray-500 mb-4 pb-4 border-b border-gray-200">
+                            <span>🕒</span>
+                            <CountdownTimer lockTime={round.lockTime.toISOString()} className="font-medium" />
+                          </div>
+                          {isLocked ? (
                             <Link
                               href={`/league/${id}/picks?round=${round.id}`}
-                              className={`flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium transition-all duration-300 rounded-lg hover:scale-105 hover:shadow-md ${
-                                isClosingSoon
-                                  ? 'bg-gradient-to-r from-status-closing to-orange-600 text-white'
-                                  : 'bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white'
-                              }`}
+                              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs bg-gray-200 text-gray-600 uppercase tracking-wider rounded-lg hover:bg-wimbledon-purple/10 hover:text-wimbledon-purple transition-all duration-300"
                             >
-                              <span>🎯</span>
-                              <span>Make Picks</span>
+                              <span>📊</span>
+                              <span>View Results</span>
                             </Link>
-                            {isClosingSoon && (
-                              <p className="text-xs text-status-closing font-semibold mt-2 text-center uppercase tracking-wider animate-pulse">
-                                ⚠️ Closing Soon
-                              </p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )
-                  })}
+                          ) : isFuture ? (
+                            <div className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs bg-gray-100 text-gray-400 uppercase tracking-wider rounded-lg cursor-default">
+                              <span>🔒</span>
+                              <span>Not Yet Open</span>
+                            </div>
+                          ) : (
+                            <>
+                              <Link
+                                href={`/league/${id}/picks?round=${round.id}`}
+                                className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium transition-all duration-300 rounded-lg hover:scale-105 hover:shadow-md bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white"
+                              >
+                                <span>🎯</span>
+                                <span>Make Picks</span>
+                              </Link>
+                              {isClosingSoon && (
+                                <p className="text-xs text-status-closing font-semibold mt-2 text-center uppercase tracking-wider animate-pulse">
+                                  ⚠️ Closing Soon
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
               </div>
             </div>

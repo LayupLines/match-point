@@ -78,6 +78,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.redirect(new URL(`/league/${leagueId}/picks?round=${roundId}&feedback=locked`, req.url))
       }
 
+      // Check if this is a future round (not the current one)
+      const allRounds = await db.round.findMany({
+        where: { tournamentId: round.tournamentId },
+        orderBy: { roundNumber: 'asc' },
+        select: { id: true, roundNumber: true, lockTime: true },
+      })
+      const currentRound = allRounds.find(r => new Date(r.lockTime) > new Date())
+      if (currentRound && round.roundNumber > currentRound.roundNumber) {
+        return NextResponse.redirect(new URL(`/league/${leagueId}/picks?round=${roundId}&feedback=not-open`, req.url))
+      }
+
       // Check elimination
       const standing = await db.standings.findUnique({
         where: { userId_leagueId: { userId: session.user.id!, leagueId } },
