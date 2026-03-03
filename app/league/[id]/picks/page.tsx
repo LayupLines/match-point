@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getFlagPath, getCountryName } from '@/lib/utils/country'
 import { CountdownTimer } from '@/components/countdown-timer'
 import { PlayerGrid } from '@/components/player-grid'
+import { InstructionsModal } from '@/components/instructions-modal'
 import { evaluatePicksDetailed } from '@/lib/services/pick-evaluation'
 import type { MatchResult, PickData } from '@/lib/services/pick-evaluation'
 
@@ -112,6 +113,26 @@ export default async function PicksPage({
     orderBy: [{ seed: 'asc' }, { name: 'asc' }],
   })
 
+  // Fetch matches for this round (for matchup view)
+  const roundMatches = await db.match.findMany({
+    where: { roundId },
+    include: {
+      player1: { select: { id: true, name: true, seed: true, country: true } },
+      player2: { select: { id: true, name: true, seed: true, country: true } },
+    },
+    orderBy: { bracketPosition: 'asc' },
+  })
+
+  // Bye players: in tournament but not in any match this round
+  const playersInMatches = new Set<string>()
+  for (const match of roundMatches) {
+    playersInMatches.add(match.player1Id)
+    playersInMatches.add(match.player2Id)
+  }
+  const byePlayers = roundMatches.length > 0
+    ? allPlayers.filter(p => !playersInMatches.has(p.id))
+    : []
+
   // Get all previously used players by this user in this league
   const previousPicks = await db.pick.findMany({
     where: {
@@ -202,18 +223,23 @@ export default async function PicksPage({
               </h1>
               <p className="text-xs sm:text-sm text-white/60">{league.name}</p>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm px-4 sm:px-6 py-3 sm:py-4 rounded-xl border border-white/20 w-full sm:w-auto">
-              <p className="text-xs text-white/60 uppercase tracking-wider mb-1">
-                🕒 <CountdownTimer lockTime={round.lockTime.toISOString()} className="text-white/80" />
-              </p>
-              <p className="text-sm sm:text-base text-white font-medium">
-                {round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required
-              </p>
-              {isLocked && (
-                <span className="inline-flex items-center gap-1 mt-2 px-3 py-1 text-xs bg-status-locked text-white uppercase tracking-wider rounded-full">
-                  <span>🔒</span> Locked
-                </span>
+            <div className="flex items-start gap-3 w-full sm:w-auto">
+              {!isLocked && !isFutureRound && !isEliminated && (
+                <InstructionsModal />
               )}
+              <div className="bg-white/10 backdrop-blur-sm px-4 sm:px-6 py-3 sm:py-4 rounded-xl border border-white/20 flex-1 sm:flex-initial">
+                <p className="text-xs text-white/60 uppercase tracking-wider mb-1">
+                  🕒 <CountdownTimer lockTime={round.lockTime.toISOString()} className="text-white/80" />
+                </p>
+                <p className="text-sm sm:text-base text-white font-medium">
+                  {round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required
+                </p>
+                {isLocked && (
+                  <span className="inline-flex items-center gap-1 mt-2 px-3 py-1 text-xs bg-status-locked text-white uppercase tracking-wider rounded-full">
+                    <span>🔒</span> Locked
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -347,74 +373,6 @@ export default async function PicksPage({
           </div>
         ) : (
           <>
-            {/* Current Picks Summary with Progress Bar */}
-            {existingPicks.length > 0 && (
-              <div className="bg-gradient-to-br from-white to-gray-50 border-2 border-wimbledon-purple/20 p-6 mb-6 shadow-xl rounded-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-wimbledon-purple/10 to-wimbledon-green/10 rounded-full blur-3xl"></div>
-                <div className="relative z-10">
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">📋</span>
-                        <h3 className="text-lg sm:text-xl font-light text-gray-900 tracking-wide">
-                          Current Selection
-                        </h3>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {existingPicks.map((p) => p.player.name).join(', ')}
-                      </p>
-                    </div>
-                    {existingPicks.length === round.requiredPicks && (
-                      <span className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white text-xs uppercase tracking-wider rounded-full shadow-lg animate-pulse">
-                        <span>✓</span> Complete
-                      </span>
-                    )}
-                  </div>
-                  {/* Progress Bar */}
-                  <div className="mt-6">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-700">Progress</span>
-                      <span className="text-sm font-bold text-wimbledon-purple">
-                        {existingPicks.length} / {round.requiredPicks}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden shadow-inner">
-                      <div
-                        className="bg-gradient-to-r from-wimbledon-purple via-wimbledon-green to-wimbledon-green-dark h-full transition-all duration-700 ease-out rounded-full"
-                        style={{ width: `${round.requiredPicks > 0 ? (existingPicks.length / round.requiredPicks) * 100 : 0}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2 text-right">
-                      {round.requiredPicks > 0 ? Math.round((existingPicks.length / round.requiredPicks) * 100) : 0}% complete
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Instructions */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-wimbledon-purple/20 p-6 mb-6 shadow-lg rounded-2xl">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">💡</span>
-                <h2 className="text-lg sm:text-xl font-light text-gray-900 tracking-wide">Instructions</h2>
-              </div>
-              <ul className="space-y-3 text-gray-700 text-sm sm:text-base">
-                <li className="flex items-start gap-3 p-2 hover:bg-white/50 rounded-lg transition-colors">
-                  <span className="text-wimbledon-green mt-1 text-lg">→</span>
-                  <span>Select exactly <strong>{round.requiredPicks} player{round.requiredPicks !== 1 ? 's' : ''}</strong> from the list below</span>
-                </li>
-                <li className="flex items-start gap-3 p-2 hover:bg-white/50 rounded-lg transition-colors">
-                  <span className="text-wimbledon-purple mt-1 text-lg">→</span>
-                  <span>You cannot pick players you've already used in previous rounds</span>
-                </li>
-                <li className="flex items-start gap-3 p-2 hover:bg-white/50 rounded-lg transition-colors">
-                  <span className="text-wimbledon-green mt-1 text-lg">→</span>
-                  <span>Your selections are saved automatically</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Player Grid */}
             <PlayerGrid
               players={allPlayers.map((p) => ({
                 id: p.id,
@@ -422,6 +380,13 @@ export default async function PicksPage({
                 seed: p.seed,
                 country: p.country,
               }))}
+              matches={roundMatches.map((m) => ({
+                id: m.id,
+                player1: { id: m.player1.id, name: m.player1.name, seed: m.player1.seed, country: m.player1.country },
+                player2: { id: m.player2.id, name: m.player2.name, seed: m.player2.seed, country: m.player2.country },
+                bracketPosition: m.bracketPosition,
+              }))}
+              byePlayerIds={byePlayers.map(p => p.id)}
               usedPlayerIds={Array.from(usedPlayerIds)}
               currentPickIds={Array.from(currentPickIds)}
               requiredPicks={round.requiredPicks}
@@ -432,27 +397,55 @@ export default async function PicksPage({
               feedback={feedback}
             />
 
-            {/* Submit Notice */}
-            {existingPicks.length === round.requiredPicks && (
-              <div className="mt-6 bg-gradient-to-r from-wimbledon-green/10 via-wimbledon-green/5 to-transparent border-2 border-wimbledon-green/30 p-6 shadow-xl rounded-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-wimbledon-green/20 rounded-full blur-3xl"></div>
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-3xl animate-bounce">🎉</span>
-                    <h3 className="text-xl sm:text-2xl font-light text-gray-900 tracking-wide">
-                      Selection Complete!
-                    </h3>
-                  </div>
-                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
-                    Your {round.requiredPicks} pick{round.requiredPicks !== 1 ? 's have' : ' has'} been saved successfully.
-                    They will be locked when the round begins at <strong>{new Date(round.lockTime).toLocaleString()}</strong>.
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Bottom spacer for sticky bar */}
+            <div className="h-20" />
           </>
         )}
       </main>
+
+      {/* Sticky progress bar — visible while making picks */}
+      {!isLocked && !isFutureRound && !isEliminated && (
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          {/* Progress bar track */}
+          <div className="h-1 bg-gray-200">
+            <div
+              className="h-full bg-gradient-to-r from-wimbledon-purple to-wimbledon-green transition-all duration-700 ease-out"
+              style={{ width: `${round.requiredPicks > 0 ? (existingPicks.length / round.requiredPicks) * 100 : 0}%` }}
+            />
+          </div>
+          <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+            <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-lg flex-shrink-0">
+                    {existingPicks.length === round.requiredPicks ? '✅' : '📋'}
+                  </span>
+                  <div className="min-w-0">
+                    {existingPicks.length === 0 ? (
+                      <p className="text-sm text-gray-500">No picks yet</p>
+                    ) : (
+                      <p className="text-sm text-gray-700 truncate">
+                        {existingPicks.map((p) => p.player.name).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex-shrink-0">
+                  {existingPicks.length === round.requiredPicks ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-wimbledon-green text-white text-xs font-semibold uppercase tracking-wider rounded-full">
+                      <span>✓</span> Complete
+                    </span>
+                  ) : (
+                    <span className="text-sm font-bold text-wimbledon-purple">
+                      {existingPicks.length} / {round.requiredPicks}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

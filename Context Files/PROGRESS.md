@@ -672,6 +672,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ All code deployed and smoke-tested on production
 - ✅ Two full code reviews completed — all critical, medium, and low issues resolved
 - ✅ QUICKSTART.md and README.md updated to reflect current project state
+- ✅ Browse leagues page restyled to match Wimbledon theme
+- ✅ Auto-login after registration (no more redirect to login page)
+- ✅ Matchup view on picks page — shows Player 1 vs Player 2 cards instead of flat grid
+- ✅ Bye players shown as non-selectable in greyed-out section (ATP R1: 32 seeded byes)
+- ✅ Sticky progress bar — fixed bottom bar shows pick count and player names while scrolling
+- ✅ WTA draw updated with 24 real player names (13 qualifier placeholders remain)
 
 ### Documentation Update (Mar 1, 2026)
 **Goal**: Bring QUICKSTART.md and README.md up to date with all Phase 1–3 changes.
@@ -753,8 +759,130 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 **Deployment**: Committed and pushed to GitHub (commit `92aa57e`), Vercel auto-deployed. TypeScript clean, 39 tests passing.
 
+### Browse Leagues Page Restyle (Mar 2, 2026)
+**Goal**: Update the browse leagues page (`/leagues`) to match the Wimbledon theme used across the rest of the app.
+
+**Changes**:
+- Purple gradient header (matching dashboard and league detail pages)
+- Grass court background with semi-transparent white overlay
+- Green gradient "Create League" and "View League" buttons
+- Purple "Joined" badges for leagues the user has already joined
+- Tennis ball emoji icons for tournament, creator, and member counts
+- Green "ACTIVE" status pills, orange "UPCOMING" pills
+- Rounded cards with shadow and hover scale effects
+- Cleaned up old test leagues from database — only Indian Wells ATP + WTA leagues remain
+
+**Files Modified**:
+- `app/leagues/page.tsx` — Full restyle to Wimbledon theme
+
+**Deployment**: Committed and pushed to GitHub (commit `496b67c`), Vercel auto-deployed.
+
+### Auto-Login After Registration (Mar 2, 2026)
+**Goal**: Improve the registration UX — new users should be logged in automatically instead of being redirected to the login page.
+
+**Problem**: After registering, users were sent to `/login?registered=true`. This was confusing — users might think registration failed since they had to log in again.
+
+**Implementation**:
+- After the registration API returns success, the client calls `signIn('credentials', { email, password, redirect: false })` from `next-auth/react`
+- On successful sign-in, redirects to `/dashboard`
+- If auto-login fails for any reason, falls back to the previous behavior (redirect to login page)
+
+**Files Modified**:
+- `app/register/page.tsx` — Import `signIn` from `next-auth/react`, auto-login after registration
+
+**Deployment**: Committed and pushed to GitHub (commit `7a62717`), Vercel auto-deployed. TypeScript clean, verified via preview (test user registered → landed on dashboard automatically).
+
+### Fix Join League Flow (Mar 3, 2026)
+**Goal**: Fix the "Join League" button showing raw JSON on a black screen instead of a proper page.
+
+**Problem**: The league detail page used a plain HTML `<form action="/api/leagues/${id}/join" method="POST">`. The API returned JSON (`{ league: ... }`), which the browser rendered as raw code on a black screen — confusing for users.
+
+**Fix**:
+- Changed the join API to redirect back to the league page (`/league/${leagueId}`) on success instead of returning JSON
+- On error, redirects back with an error query param instead of returning JSON error
+- Also restyled the "Join League" card to match Wimbledon theme (green gradient button, centered layout, tennis ball icon)
+
+**Files Modified**:
+- `app/api/leagues/[id]/join/route.ts` — Return redirect instead of JSON response
+- `app/league/[id]/page.tsx` — Restyled join card to match Wimbledon theme
+
+**Deployment**: Committed and pushed to GitHub (commit `5d03b75`), Vercel auto-deployed. Verified via preview: clicked Join League → redirected to league page with member view (Tournament Rounds visible).
+
+### WTA Draw Update (Mar 3, 2026)
+**Goal**: Replace qualifier placeholders in the WTA Indian Wells draw with real player names from the published qualifying results.
+
+**Work Done**:
+- Updated 24 WTA player names (replaced qualifier placeholders with actual players: Alycia Parks, Caty McNally, Lesia Tsurenko, etc.)
+- Recreated all 32 WTA R1 matches with correct bracket positions (1-32) to reflect accurate pairings
+- Added SVK (Slovakia) country code mapping to `lib/utils/country.ts` + copied `sk.svg` flag to `/public/flags/`
+- 13 qualifier placeholders remain (qualifying not yet complete at time of update)
+
+**Files Modified**:
+- `lib/utils/country.ts` — Added SVK → sk mapping and Slovakia country name
+- `public/flags/sk.svg` — Slovakia flag SVG
+
+**Scripts Used**:
+- `scripts/update-wta-draw.js` — One-off script to update player names and recreate R1 matches via Prisma
+
+### Matchup View on Picks Page (Mar 3, 2026)
+**Goal**: Show match pairings (Player 1 vs Player 2) on the picks page instead of a flat player grid, so users can see who is playing whom when making their picks.
+
+**Problem**: The picks page showed all tournament players in a flat 4-column grid sorted by seed/name. Users had no context about matchups when deciding who to pick.
+
+**Implementation**:
+- **Server component** (`page.tsx`): Added `roundMatches` query with player includes, ordered by bracket position. Computed bye players (players in tournament but not in any match for the round). Passed `matches` and `byePlayerIds` as new props to `<PlayerGrid>`.
+- **Client component** (`player-grid.tsx`): Added `MatchData` type and `PlayerHalf` sub-component. Conditional rendering: when matches exist → matchup card view; when no matches → flat grid fallback.
+- **Match cards**: Two `PlayerHalf` components side-by-side with "vs" divider. Each half shows player name, seed badge, country flag, and Select/Remove button. Stacks vertically on mobile (`flex-col sm:flex-row`). Card border turns green when either player is picked.
+- **Bye section**: After match cards, shows "Players with Byes — Not Available This Round" header with greyed-out, non-selectable player cards. Label shows "BYE" instead of a select button.
+- **Search**: Filters match cards where either player's name or country matches the query. Bye section also filterable. Header updates to show filtered count.
+- **Grid layout**: `grid-cols-1 lg:grid-cols-2` for matchup cards (wider than single player cards).
+- **Backward compatible**: Falls back to flat grid when no matches exist for a round.
+
+**ATP R1 behavior**: 32 matchup cards + 32 seeded bye players (Alcaraz, Sinner, Djokovic, etc.) shown in greyed-out bye section.
+**WTA R1 behavior**: 32 matchup cards, no bye section (all 64 R1 players have matches).
+
+**Files Modified**:
+- `app/league/[id]/picks/page.tsx` — Match data fetching, bye player computation, updated PlayerGrid props
+- `components/player-grid.tsx` — Complete rewrite with matchup card view, PlayerHalf component, bye section, flat grid fallback
+
+### Sticky Progress Bar (Mar 3, 2026)
+**Goal**: Replace the scroll-to-top progress section with a fixed bottom bar so users can always see their pick progress while scrolling through matchups.
+
+**Problem**: The "Current Selection" progress section with progress bar was at the top of the page. After scrolling down to select players, users had to scroll all the way back up to see how many picks they'd made.
+
+**Implementation**:
+- Removed the large "Current Picks Summary with Progress Bar" section and "Submit Notice" section
+- Added a fixed bottom bar (`fixed bottom-0 left-0 right-0 z-50`) with:
+  - Thin gradient progress track (purple → green) at the top edge
+  - Backdrop-blur white bar with player names and count
+  - Three states: "No picks yet" (empty), player name list with count (in progress), green "COMPLETE" badge (all picks made)
+  - `truncate` on player names to handle overflow on mobile
+- Added `h-20` spacer div to prevent content from being covered by the sticky bar
+- Only visible when round is not locked, not future, and user is not eliminated
+
+**Files Modified**:
+- `app/league/[id]/picks/page.tsx` — Removed old progress section, added sticky bottom bar and spacer
+
+### How to Play Modal (Mar 3, 2026)
+**Goal**: Replace the static inline instructions block with a clean pop-up modal triggered from the header.
+
+**Implementation**:
+- Created `components/instructions-modal.tsx` — client component using `useState` + `createPortal`
+- Trigger button in the picks page header (left of countdown box) with glassmorphism styling (`bg-white/10`, `border-white/20`, `backdrop-blur-sm`)
+- Modal portaled to `document.body` so it renders centered on the full page, not inside the header's stacking context
+- Purple gradient header with close button, white content area, green "Got it" footer
+- Scrollable content area (`overflow-y-auto flex-1`) for mobile viewports
+- Button height matches countdown box via `self-stretch`
+- Three concise bullet points under "Making Your Picks": pick selection, no-reuse rule, elimination rule
+- Conditionally rendered only when round is active (not locked, not future, not eliminated)
+
+**Files Modified**:
+- `components/instructions-modal.tsx` — New component
+- `app/league/[id]/picks/page.tsx` — Removed old static instructions block, added modal to header
+
 ## Next Steps
-- Update WTA qualifier placeholders with real player names once full draw is published
-- R2 match setup after R1 completes (Mar 4-5): create R2 CSVs pairing seeds with R1 winners, then auto-bracket from R3 onward
+- Update remaining 13 WTA qualifier placeholders with real player names
+- R2 match setup after R1 completes (Mar 4-5): auto-bracket from R1 results, manually create R2 for ATP (seeded byes)
 - Share league join links with 2-5 test users
 - Enter match results via admin as tournament progresses
+- Commit and deploy latest changes (matchup view, sticky progress bar, WTA draw updates, instructions modal)

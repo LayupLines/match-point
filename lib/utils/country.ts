@@ -46,6 +46,7 @@ const COUNTRY_CODE_MAP: Record<string, string> = {
   LAT: 'lv',  // Latvia
   PHI: 'ph',  // Philippines
   AUT: 'at',  // Austria
+  SVK: 'sk',  // Slovakia
   XXX: 'xx',  // Unknown/placeholder
 }
 
@@ -111,6 +112,7 @@ export function getCountryName(countryCode: string | null | undefined): string {
     LAT: 'Latvia',
     PHI: 'Philippines',
     AUT: 'Austria',
+    SVK: 'Slovakia',
     XXX: 'Unknown',
   }
 

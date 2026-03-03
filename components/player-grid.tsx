@@ -1,5 +1,5 @@
 // ABOUTME: Client component for the player selection grid on the picks page.
-// Provides search/filter by name or country, pick feedback banner, and handles form submissions.
+// Shows matchup cards (player vs player) when match data is available, with flat grid fallback.
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -13,8 +13,86 @@ type Player = {
   country: string | null
 }
 
+type MatchData = {
+  id: string
+  player1: Player
+  player2: Player
+  bracketPosition: number | null
+}
+
+function PlayerHalf({
+  player,
+  isUsed,
+  isPicked,
+  canSelect,
+  isBye,
+  leagueId,
+  roundId,
+}: {
+  player: Player
+  isUsed: boolean
+  isPicked: boolean
+  canSelect: boolean
+  isBye?: boolean
+  leagueId: string
+  roundId: string
+}) {
+  return (
+    <div className={`flex-1 p-4 ${isPicked ? 'bg-wimbledon-green/5' : ''}`}>
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-gray-900 leading-tight mb-1 truncate">{player.name}</p>
+          {player.seed && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full">
+              <span>🏆</span>
+              <span>Seed {player.seed}</span>
+            </span>
+          )}
+          <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
+            <img
+              src={getFlagPath(player.country)}
+              alt={getCountryName(player.country)}
+              className="w-4 h-3 object-cover rounded-sm border border-gray-200 shadow-sm"
+            />
+            <span className="font-medium">{getCountryName(player.country)}</span>
+          </p>
+        </div>
+        {isPicked && <span className="text-wimbledon-green text-xl flex-shrink-0">✓</span>}
+        {isUsed && !isPicked && (
+          <span className="text-xs bg-gray-300 text-gray-600 px-2 py-1 uppercase tracking-wider rounded-full flex-shrink-0">
+            Used
+          </span>
+        )}
+      </div>
+      {!isUsed && !isBye && (
+        <form action="/api/picks" method="POST">
+          <input type="hidden" name="leagueId" value={leagueId} />
+          <input type="hidden" name="roundId" value={roundId} />
+          <input type="hidden" name="playerId" value={player.id} />
+          <input type="hidden" name="action" value={isPicked ? 'remove' : 'add'} />
+          <button
+            type="submit"
+            disabled={!isPicked && !canSelect}
+            className={`w-full mt-2 px-3 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg ${
+              isPicked
+                ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                : canSelect
+                  ? 'bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white hover:shadow-lg'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {isPicked ? '✕ Remove' : '+ Select'}
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
+
 export function PlayerGrid({
   players,
+  matches = [],
+  byePlayerIds = [],
   usedPlayerIds,
   currentPickIds,
   requiredPicks,
@@ -25,6 +103,8 @@ export function PlayerGrid({
   feedback,
 }: {
   players: Player[]
+  matches?: MatchData[]
+  byePlayerIds?: string[]
   usedPlayerIds: string[]
   currentPickIds: string[]
   requiredPicks: number
@@ -39,6 +119,8 @@ export function PlayerGrid({
 
   const usedSet = new Set(usedPlayerIds)
   const pickedSet = new Set(currentPickIds)
+  const byeSet = new Set(byePlayerIds)
+  const hasMatchups = matches.length > 0
 
   // Auto-dismiss feedback after 3 seconds
   useEffect(() => {
@@ -48,17 +130,37 @@ export function PlayerGrid({
     return () => clearTimeout(timer)
   }, [feedback])
 
-  // Filter players by search query
-  const filteredPlayers = searchQuery.trim()
-    ? players.filter((player) => {
+  // Search helper
+  const playerMatchesQuery = (player: Player, query: string) => {
+    const nameMatch = player.name.toLowerCase().includes(query)
+    const countryMatch = player.country
+      ? getCountryName(player.country).toLowerCase().includes(query)
+      : false
+    return nameMatch || countryMatch
+  }
+
+  // Filter matches by search query (either player matches)
+  const filteredMatches = searchQuery.trim()
+    ? matches.filter((match) => {
         const query = searchQuery.toLowerCase()
-        const nameMatch = player.name.toLowerCase().includes(query)
-        const countryMatch = player.country
-          ? getCountryName(player.country).toLowerCase().includes(query)
-          : false
-        return nameMatch || countryMatch
+        return playerMatchesQuery(match.player1, query) || playerMatchesQuery(match.player2, query)
       })
+    : matches
+
+  // Filter bye players by search query
+  const byePlayers = players.filter(p => byeSet.has(p.id))
+  const filteredByePlayers = searchQuery.trim()
+    ? byePlayers.filter(p => playerMatchesQuery(p, searchQuery.toLowerCase()))
+    : byePlayers
+
+  // Filter players by search query (flat grid fallback)
+  const filteredPlayers = searchQuery.trim()
+    ? players.filter((player) => playerMatchesQuery(player, searchQuery.toLowerCase()))
     : players
+
+  const noResults = hasMatchups
+    ? filteredMatches.length === 0 && filteredByePlayers.length === 0
+    : filteredPlayers.length === 0
 
   return (
     <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
@@ -80,15 +182,19 @@ export function PlayerGrid({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">👥</span>
+              <span className="text-2xl">{hasMatchups ? '🎾' : '👥'}</span>
               <h2 className="text-2xl sm:text-3xl font-light text-gray-900 tracking-wide">
-                Available Players
+                {hasMatchups ? 'Round Matchups' : 'Available Players'}
               </h2>
             </div>
             <p className="text-sm text-gray-600">
-              {searchQuery
-                ? `Showing ${filteredPlayers.length} of ${players.length} players`
-                : `${players.length} players • ${tournamentName}`}
+              {hasMatchups
+                ? (searchQuery
+                    ? `Showing ${filteredMatches.length} of ${matches.length} matchups`
+                    : `${matches.length} matchups • ${tournamentName}`)
+                : (searchQuery
+                    ? `Showing ${filteredPlayers.length} of ${players.length} players`
+                    : `${players.length} players • ${tournamentName}`)}
             </p>
           </div>
           <div className="relative w-full sm:w-72">
@@ -112,11 +218,11 @@ export function PlayerGrid({
         </div>
       </div>
 
-      {/* Player grid */}
+      {/* Content */}
       <div className="p-4 sm:p-6">
-        {filteredPlayers.length === 0 ? (
+        {noResults ? (
           <div className="text-center py-12 text-gray-500">
-            <p className="text-lg mb-2">No players match "{searchQuery}"</p>
+            <p className="text-lg mb-2">No {hasMatchups ? 'matchups' : 'players'} match &quot;{searchQuery}&quot;</p>
             <button
               onClick={() => setSearchQuery('')}
               className="text-sm text-wimbledon-purple hover:underline"
@@ -124,7 +230,82 @@ export function PlayerGrid({
               Clear search
             </button>
           </div>
+        ) : hasMatchups ? (
+          <>
+            {/* Matchup cards */}
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+              {filteredMatches.map((match) => {
+                const p1Picked = pickedSet.has(match.player1.id)
+                const p2Picked = pickedSet.has(match.player2.id)
+                const eitherPicked = p1Picked || p2Picked
+
+                return (
+                  <div
+                    key={match.id}
+                    className={`rounded-xl overflow-hidden transition-all duration-300 ${
+                      eitherPicked
+                        ? 'border-2 border-wimbledon-green/40 shadow-lg'
+                        : 'border-2 border-gray-200 hover:border-wimbledon-purple/30 hover:shadow-lg'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row">
+                      <PlayerHalf
+                        player={match.player1}
+                        isUsed={usedSet.has(match.player1.id)}
+                        isPicked={p1Picked}
+                        canSelect={!usedSet.has(match.player1.id) && !p1Picked && existingPickCount < requiredPicks}
+                        leagueId={leagueId}
+                        roundId={roundId}
+                      />
+                      <div className="flex items-center justify-center sm:flex-col px-3 py-2 sm:py-0 bg-gray-50 sm:border-x border-y sm:border-y-0 border-gray-100">
+                        <span className="text-xs font-bold text-wimbledon-purple/60 uppercase tracking-widest">vs</span>
+                      </div>
+                      <PlayerHalf
+                        player={match.player2}
+                        isUsed={usedSet.has(match.player2.id)}
+                        isPicked={p2Picked}
+                        canSelect={!usedSet.has(match.player2.id) && !p2Picked && existingPickCount < requiredPicks}
+                        leagueId={leagueId}
+                        roundId={roundId}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Bye players section */}
+            {filteredByePlayers.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+                  Players with Byes — Not Available This Round
+                </h3>
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {filteredByePlayers.map((player) => (
+                    <div
+                      key={player.id}
+                      className="rounded-xl border border-gray-200 bg-gray-50 opacity-60 p-4"
+                    >
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-700 leading-tight mb-1 truncate">{player.name}</p>
+                          {player.seed && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full">
+                              <span>🏆</span>
+                              <span>Seed {player.seed}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1.5 font-medium uppercase tracking-wider">BYE</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
+          /* Flat player grid (fallback when no matches) */
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredPlayers.map((player) => {
               const isUsed = usedSet.has(player.id)
