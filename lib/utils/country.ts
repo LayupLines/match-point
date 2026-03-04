@@ -47,6 +47,10 @@ const COUNTRY_CODE_MAP: Record<string, string> = {
   PHI: 'ph',  // Philippines
   AUT: 'at',  // Austria
   SVK: 'sk',  // Slovakia
+  AND: 'ad',  // Andorra
+  THA: 'th',  // Thailand
+  TPE: 'tw',  // Chinese Taipei (Taiwan)
+  UZB: 'uz',  // Uzbekistan
   XXX: 'xx',  // Unknown/placeholder
 }
 
@@ -113,6 +117,10 @@ export function getCountryName(countryCode: string | null | undefined): string {
     PHI: 'Philippines',
     AUT: 'Austria',
     SVK: 'Slovakia',
+    AND: 'Andorra',
+    THA: 'Thailand',
+    TPE: 'Chinese Taipei',
+    UZB: 'Uzbekistan',
     XXX: 'Unknown',
   }
 

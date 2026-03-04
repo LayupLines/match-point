@@ -1,7 +1,7 @@
 {
   "name": "match-point",
   "version": "1.0.0",
-  "description": "Wimbledon Survivor Tennis Game",
+  "description": "Tennis Survivor Game",
   "private": true,
   "scripts": {
     "dev": "next dev",

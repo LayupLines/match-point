@@ -5,8 +5,8 @@ import './globals.css'
 export const runtime = 'nodejs'
 
 export const metadata: Metadata = {
-  title: 'Match Point - Wimbledon Survivor',
-  description: 'Tennis survivor game for Wimbledon',
+  title: 'Match Point - Tennis Survivor Game',
+  description: 'Tennis survivor game - pick players each round and compete to be the last one standing',
 }
 
 export default function RootLayout({

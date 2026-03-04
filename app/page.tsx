@@ -19,7 +19,7 @@ export default async function HomePage() {
             Match Point
           </h1>
           <p className="text-xl sm:text-2xl text-gray-600">
-            Wimbledon Survivor Tennis Game
+            Tennis Survivor Game
           </p>
         </div>
 

@@ -678,6 +678,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ Bye players shown as non-selectable in greyed-out section (ATP R1: 32 seeded byes)
 - ✅ Sticky progress bar — fixed bottom bar shows pick count and player names while scrolling
 - ✅ WTA draw updated with 24 real player names (13 qualifier placeholders remain)
+- ✅ How to Play modal — pop-up with pick rules and elimination context, portaled to body
 
 ### Documentation Update (Mar 1, 2026)
 **Goal**: Bring QUICKSTART.md and README.md up to date with all Phase 1–3 changes.
@@ -880,9 +881,69 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - `components/instructions-modal.tsx` — New component
 - `app/league/[id]/picks/page.tsx` — Removed old static instructions block, added modal to header
 
+**Deployment**: Committed and pushed to GitHub (commit `36b0cb3`), Vercel auto-deployed. Includes matchup view, sticky progress bar, WTA draw updates, SVK flag, and instructions modal.
+
+### Optimistic Pick Updates (Mar 4, 2026)
+**Goal**: Eliminate full-page reloads when making picks — use client-side fetch with optimistic UI updates.
+
+**Problem**: Every pick add/remove triggered a form POST that redirected back to the page, causing a full reload of all 32 matchups. Slow and jarring UX.
+
+**Implementation**:
+- Extracted `processSinglePick()` helper in `app/api/picks/route.ts` to share validation logic between form-data and JSON handlers
+- Added JSON single-pick handler: `POST /api/picks` with `{ action: 'add'|'remove', leagueId, roundId, playerId }` returns `{ success: true, action }`
+- Form-data handler preserved as progressive enhancement fallback (still redirects)
+- `components/player-grid.tsx` rewritten to use client-side `fetch()`:
+  - `localPickIds` state for optimistic add/remove before server confirms
+  - `pendingPlayers` Set disables buttons during in-flight requests
+  - Rollback on server error with error feedback banner
+  - `feedbackTrigger` counter forces `useEffect` re-runs for consecutive same-action picks
+- Moved sticky progress bar from page into PlayerGrid component (reacts to `localPickIds`)
+- Removed `existingPickCount` prop (derived from `localPickIds.length`)
+
+**Files Modified**:
+- `app/api/picks/route.ts` — Added `processSinglePick()` helper, JSON single-pick handler
+- `components/player-grid.tsx` — Client-side fetch, optimistic state, progress bar moved here
+- `app/league/[id]/picks/page.tsx` — Removed progress bar and spacer (moved to PlayerGrid)
+
+### Opponent Fade on Pick (Mar 4, 2026)
+**Goal**: When a player is picked in a matchup, fade the opponent's half and hide their select button.
+
+**Implementation**:
+- Added `opponentPicked` prop to `PlayerHalf` component
+- When opponent is picked: `opacity-40` applied to the half, select button hidden
+- When the picked player is shown: full opacity, "Remove" button still visible
+- Purely client-side using existing `localPickIds` data
+
+**Files Modified**:
+- `components/player-grid.tsx` — Added `opponentPicked` prop, conditional opacity and button rendering
+
+### Full Draw Setup — Indian Wells 2026 (Mar 4, 2026)
+**Goal**: Update both ATP and WTA Round 1 matchups with correct players now that qualifying is complete.
+
+**WTA Draw** (`scripts/update-iw-wta-r1.js`):
+- Renamed 13 qualifier placeholders to real names: Sakatsume, Jimenez Kasintseva, Zakharova, Rakhimova, Gibson, Stakusic, Vidmanova, Hunter, Parry, Tararudee, Townsend, Day, Galfi (LL)
+- Deleted and recreated all 32 R1 matches from official PDF draw
+- Created 1 new player (Ann Li)
+- Removed Eva Lys (withdrawn with knee injury, replaced by Galfi as Lucky Loser)
+- Fixed Potapova country from RUS to AUT (now competes under Austrian flag)
+
+**ATP Draw** (`scripts/update-iw-atp-r1.js`):
+- Renamed 12 qualifier placeholders to real names: Shimabukuro, Maestrelli, Hijikata, McDonald, Bonzi, Tseng, Merida, O'Connell, Prizmic, Schoolkate, Galarneau, Svrcina
+- Deleted and recreated all 32 R1 matches from official PDF draw
+- Cleaned up duplicate Van de Zandschulp player entry (casing mismatch)
+
+**Country Code & Flag Updates** (`lib/utils/country.ts`):
+- Added 4 missing country codes to both `COUNTRY_CODE_MAP` and `getCountryName`:
+  - AND → Andorra (Jimenez Kasintseva)
+  - THA → Thailand (Tararudee)
+  - TPE → Chinese Taipei (Tseng)
+  - UZB → Uzbekistan (Rakhimova)
+- Downloaded 4 flag SVGs (`ad.svg`, `th.svg`, `tw.svg`, `uz.svg`) to `public/flags/`
+
+**Verification**: All 64 matches (32 WTA + 32 ATP) verified against official PDF draws. All player names, countries, and bracket positions confirmed correct.
+
 ## Next Steps
-- Update remaining 13 WTA qualifier placeholders with real player names
-- R2 match setup after R1 completes (Mar 4-5): auto-bracket from R1 results, manually create R2 for ATP (seeded byes)
-- Share league join links with 2-5 test users
+- Deploy latest changes (optimistic picks, opponent fade, full draw setup, country flags)
+- R2 match setup after R1 completes (Mar 5-6): auto-bracket from R1 results
+- Share league join links with test users
 - Enter match results via admin as tournament progresses
-- Commit and deploy latest changes (matchup view, sticky progress bar, WTA draw updates, instructions modal)

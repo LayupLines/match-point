@@ -372,80 +372,30 @@ export default async function PicksPage({
             </div>
           </div>
         ) : (
-          <>
-            <PlayerGrid
-              players={allPlayers.map((p) => ({
-                id: p.id,
-                name: p.name,
-                seed: p.seed,
-                country: p.country,
-              }))}
-              matches={roundMatches.map((m) => ({
-                id: m.id,
-                player1: { id: m.player1.id, name: m.player1.name, seed: m.player1.seed, country: m.player1.country },
-                player2: { id: m.player2.id, name: m.player2.name, seed: m.player2.seed, country: m.player2.country },
-                bracketPosition: m.bracketPosition,
-              }))}
-              byePlayerIds={byePlayers.map(p => p.id)}
-              usedPlayerIds={Array.from(usedPlayerIds)}
-              currentPickIds={Array.from(currentPickIds)}
-              requiredPicks={round.requiredPicks}
-              existingPickCount={existingPicks.length}
-              leagueId={leagueId}
-              roundId={roundId}
-              tournamentName={league.tournament.name}
-              feedback={feedback}
-            />
-
-            {/* Bottom spacer for sticky bar */}
-            <div className="h-20" />
-          </>
+          <PlayerGrid
+            players={allPlayers.map((p) => ({
+              id: p.id,
+              name: p.name,
+              seed: p.seed,
+              country: p.country,
+            }))}
+            matches={roundMatches.map((m) => ({
+              id: m.id,
+              player1: { id: m.player1.id, name: m.player1.name, seed: m.player1.seed, country: m.player1.country },
+              player2: { id: m.player2.id, name: m.player2.name, seed: m.player2.seed, country: m.player2.country },
+              bracketPosition: m.bracketPosition,
+            }))}
+            byePlayerIds={byePlayers.map(p => p.id)}
+            usedPlayerIds={Array.from(usedPlayerIds)}
+            currentPickIds={Array.from(currentPickIds)}
+            requiredPicks={round.requiredPicks}
+            leagueId={leagueId}
+            roundId={roundId}
+            tournamentName={league.tournament.name}
+            feedback={feedback}
+          />
         )}
       </main>
-
-      {/* Sticky progress bar — visible while making picks */}
-      {!isLocked && !isFutureRound && !isEliminated && (
-        <div className="fixed bottom-0 left-0 right-0 z-50">
-          {/* Progress bar track */}
-          <div className="h-1 bg-gray-200">
-            <div
-              className="h-full bg-gradient-to-r from-wimbledon-purple to-wimbledon-green transition-all duration-700 ease-out"
-              style={{ width: `${round.requiredPicks > 0 ? (existingPicks.length / round.requiredPicks) * 100 : 0}%` }}
-            />
-          </div>
-          <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
-            <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-lg flex-shrink-0">
-                    {existingPicks.length === round.requiredPicks ? '✅' : '📋'}
-                  </span>
-                  <div className="min-w-0">
-                    {existingPicks.length === 0 ? (
-                      <p className="text-sm text-gray-500">No picks yet</p>
-                    ) : (
-                      <p className="text-sm text-gray-700 truncate">
-                        {existingPicks.map((p) => p.player.name).join(', ')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex-shrink-0">
-                  {existingPicks.length === round.requiredPicks ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-wimbledon-green text-white text-xs font-semibold uppercase tracking-wider rounded-full">
-                      <span>✓</span> Complete
-                    </span>
-                  ) : (
-                    <span className="text-sm font-bold text-wimbledon-purple">
-                      {existingPicks.length} / {round.requiredPicks}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

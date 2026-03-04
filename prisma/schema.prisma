@@ -1,4 +1,4 @@
-// Match Point - Wimbledon Survivor Tennis Game
+// Match Point - Tennis Survivor Game
 // Database Schema
 
 generator client {
