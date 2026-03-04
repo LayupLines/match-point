@@ -7,7 +7,14 @@ async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const adapter = new PrismaPg(pool);
   const db = new PrismaClient({ adapter });
-  const tid = 'cmma1xsji00088uuju4lwwiv9'; // WTA Indian Wells 2026
+
+  // Find WTA Indian Wells 2026 tournament
+  const tournament = await db.tournament.findFirst({
+    where: { gender: 'WOMEN', year: 2026, level: 'WTA_1000' }
+  });
+  if (!tournament) { console.error('WTA tournament not found'); process.exit(1); }
+  const tid = tournament.id;
+  console.log('WTA tournament:', tid, tournament.name);
 
   // Get R1 round
   const r1 = await db.round.findFirst({

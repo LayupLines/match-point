@@ -8,6 +8,7 @@ import { PlayerGrid } from '@/components/player-grid'
 import { InstructionsModal } from '@/components/instructions-modal'
 import { evaluatePicksDetailed } from '@/lib/services/pick-evaluation'
 import type { MatchResult, PickData } from '@/lib/services/pick-evaluation'
+import { fetchMatchOdds } from '@/lib/services/odds'
 
 export const runtime = 'nodejs'
 
@@ -133,6 +134,23 @@ export default async function PicksPage({
     ? allPlayers.filter(p => !playersInMatches.has(p.id))
     : []
 
+  // Fetch live win probabilities from Polymarket (non-blocking, cached)
+  let matchOddsMap = new Map<string, { player1Pct: number; player2Pct: number }>()
+  if (!isLocked && roundMatches.length > 0) {
+    try {
+      matchOddsMap = await fetchMatchOdds(
+        league.tournament.gender as 'MEN' | 'WOMEN',
+        roundMatches.map(m => ({
+          id: m.id,
+          player1Name: m.player1.name,
+          player2Name: m.player2.name,
+        })),
+      )
+    } catch {
+      // Odds fetch failure is non-critical — page renders without odds
+    }
+  }
+
   // Get all previously used players by this user in this league
   const previousPicks = await db.pick.findMany({
     where: {
@@ -256,7 +274,7 @@ export default async function PicksPage({
             <span className="text-4xl mb-4 block">🔒</span>
             <h2 className="text-xl font-light text-gray-800 mb-2 tracking-wide">Not Yet Open</h2>
             <p className="text-gray-600 mb-6">
-              This round is not yet open for picks. Complete your picks for <strong>{currentRound?.roundNumber ? allRounds.find(r => r.id === currentRound.id) ? `the current round` : 'the current round' : 'the current round'}</strong> first.
+              This round is not yet open for picks. Complete your picks for <strong>the current round</strong> first.
             </p>
             <Link
               href={`/league/${leagueId}`}
@@ -393,6 +411,7 @@ export default async function PicksPage({
             roundId={roundId}
             tournamentName={league.tournament.name}
             feedback={feedback}
+            matchOdds={Object.fromEntries(matchOddsMap)}
           />
         )}
       </main>

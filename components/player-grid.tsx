@@ -28,6 +28,7 @@ function PlayerHalf({
   isBye,
   opponentPicked,
   isPending,
+  winPct,
   onPick,
 }: {
   player: Player
@@ -37,6 +38,7 @@ function PlayerHalf({
   isBye?: boolean
   opponentPicked?: boolean
   isPending?: boolean
+  winPct?: number
   onPick?: (playerId: string, action: 'add' | 'remove') => void
 }) {
   return (
@@ -57,6 +59,9 @@ function PlayerHalf({
               className="w-4 h-3 object-cover rounded-sm border border-gray-200 shadow-sm"
             />
             <span className="font-medium">{getCountryName(player.country)}</span>
+            {winPct != null && (
+              <span className="ml-auto text-[11px] font-semibold text-gray-400">{winPct}%</span>
+            )}
           </p>
         </div>
         {isPicked && <span className="text-wimbledon-green text-xl flex-shrink-0">✓</span>}
@@ -99,6 +104,7 @@ export function PlayerGrid({
   roundId,
   tournamentName,
   feedback,
+  matchOdds = {},
 }: {
   players: Player[]
   matches?: MatchData[]
@@ -110,6 +116,7 @@ export function PlayerGrid({
   roundId: string
   tournamentName: string
   feedback?: string | null
+  matchOdds?: Record<string, { player1Pct: number; player2Pct: number }>
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [localPickIds, setLocalPickIds] = useState<string[]>(currentPickIds)
@@ -291,6 +298,7 @@ export function PlayerGrid({
                   const p1Picked = pickedSet.has(match.player1.id)
                   const p2Picked = pickedSet.has(match.player2.id)
                   const eitherPicked = p1Picked || p2Picked
+                  const odds = matchOdds[match.id]
 
                   return (
                     <div
@@ -309,6 +317,7 @@ export function PlayerGrid({
                           opponentPicked={p2Picked}
                           canSelect={!usedSet.has(match.player1.id) && !p1Picked && localPickIds.length < requiredPicks}
                           isPending={pendingPlayers.has(match.player1.id)}
+                          winPct={odds?.player1Pct}
                           onPick={handlePick}
                         />
                         <div className="flex items-center justify-center sm:flex-col px-3 py-2 sm:py-0 bg-gray-50 sm:border-x border-y sm:border-y-0 border-gray-100">
@@ -321,6 +330,7 @@ export function PlayerGrid({
                           opponentPicked={p1Picked}
                           canSelect={!usedSet.has(match.player2.id) && !p2Picked && localPickIds.length < requiredPicks}
                           isPending={pendingPlayers.has(match.player2.id)}
+                          winPct={odds?.player2Pct}
                           onPick={handlePick}
                         />
                       </div>

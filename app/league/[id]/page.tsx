@@ -61,6 +61,27 @@ export default async function LeaguePage({
     },
   })
 
+  // Get user's picks for each round (to show pick status on round cards)
+  const userPicks = membership
+    ? await db.pick.findMany({
+        where: {
+          userId: session.user.id!,
+          leagueId: id,
+        },
+        include: {
+          player: { select: { name: true } },
+        },
+      })
+    : []
+
+  // Group picks by roundId for easy lookup
+  const picksByRound = new Map<string, string[]>()
+  for (const pick of userPicks) {
+    const names = picksByRound.get(pick.roundId) ?? []
+    names.push(pick.player.name)
+    picksByRound.set(pick.roundId, names)
+  }
+
   // Get standings if user is a member
   const standings = membership
     ? await db.standings.findMany({
@@ -155,6 +176,8 @@ export default async function LeaguePage({
                       const timeUntilLock = lockTime.getTime() - now.getTime()
                       const isClosingSoon = !isLocked && timeUntilLock < 2 * 24 * 60 * 60 * 1000
                       const isFuture = !isLocked && currentRoundIndex >= 0 && index > currentRoundIndex
+                      const roundPicks = picksByRound.get(round.id) ?? []
+                      const picksComplete = roundPicks.length >= round.requiredPicks
 
                       return (
                         <div
@@ -170,15 +193,32 @@ export default async function LeaguePage({
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
                               <h3 className="font-light text-lg sm:text-xl text-gray-900 tracking-wide mb-2">{round.name}</h3>
-                              <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                                <span className="text-wimbledon-purple">📋</span>
-                                <span>{round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required</span>
-                              </div>
+                              {!isLocked && !isFuture && roundPicks.length > 0 ? (
+                                <div className={`flex items-center gap-2 text-sm mb-1 ${picksComplete ? 'text-wimbledon-green' : 'text-status-closing'}`}>
+                                  <span>{picksComplete ? '✓' : '📋'}</span>
+                                  <span>
+                                    {picksComplete
+                                      ? `${roundPicks.length} pick${roundPicks.length !== 1 ? 's' : ''} submitted`
+                                      : `${roundPicks.length} of ${round.requiredPicks} picks made`}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                                  <span className="text-wimbledon-purple">📋</span>
+                                  <span>{round.requiredPicks} pick{round.requiredPicks !== 1 ? 's' : ''} required</span>
+                                </div>
+                              )}
                             </div>
                             {!isLocked && !isFuture && (
-                              <div className="w-3 h-3 rounded-full bg-wimbledon-green animate-pulse"></div>
+                              <div className={`w-3 h-3 rounded-full ${picksComplete ? 'bg-wimbledon-green' : 'bg-wimbledon-green animate-pulse'}`}></div>
                             )}
                           </div>
+                          {/* Show picked player names for current round */}
+                          {!isLocked && !isFuture && roundPicks.length > 0 && (
+                            <div className="text-xs text-gray-400 mb-3 leading-relaxed">
+                              {roundPicks.join(', ')}
+                            </div>
+                          )}
                           <div className="flex items-center gap-2 text-xs text-gray-500 mb-4 pb-4 border-b border-gray-200">
                             <span>🕒</span>
                             <CountdownTimer lockTime={round.lockTime.toISOString()} className="font-medium" />
@@ -200,10 +240,14 @@ export default async function LeaguePage({
                             <>
                               <Link
                                 href={`/league/${id}/picks?round=${round.id}`}
-                                className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium transition-all duration-300 rounded-lg hover:scale-105 hover:shadow-md bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white"
+                                className={`flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium transition-all duration-300 rounded-lg hover:scale-105 hover:shadow-md ${
+                                  picksComplete
+                                    ? 'bg-white border-2 border-wimbledon-green text-wimbledon-green hover:bg-green-50'
+                                    : 'bg-gradient-to-r from-wimbledon-green to-wimbledon-green-dark text-white'
+                                }`}
                               >
-                                <span>🎯</span>
-                                <span>Make Picks</span>
+                                <span>{picksComplete ? '✏️' : '🎯'}</span>
+                                <span>{picksComplete ? 'Edit Picks' : roundPicks.length > 0 ? 'Continue Picks' : 'Make Picks'}</span>
                               </Link>
                               {isClosingSoon && (
                                 <p className="text-xs text-status-closing font-semibold mt-2 text-center uppercase tracking-wider animate-pulse">

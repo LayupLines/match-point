@@ -1,7 +1,7 @@
 # Match Point - Development Progress
 
 ## Project Overview
-Wimbledon Survivor tennis game built with Next.js 15, Prisma 7, NextAuth v5, and TailwindCSS v4.
+Tennis Survivor Game built with Next.js 15, Prisma 7, NextAuth v5, and TailwindCSS v4.
 
 ## Completed Work
 
@@ -942,8 +942,46 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 **Verification**: All 64 matches (32 WTA + 32 ATP) verified against official PDF draws. All player names, countries, and bracket positions confirmed correct.
 
+### Title Rebrand (Mar 4, 2026)
+**Goal**: Update the app title from "Wimbledon Survivor" to "Tennis Survivor Game" since the app now supports multiple tournaments (Indian Wells, etc.).
+
+**Changes**:
+- `app/layout.tsx` — Browser tab title and meta description
+- `app/page.tsx` — Landing page subtitle
+- `prisma/schema.prisma` — Header comment
+- `package.json` — Package description
+
+**Deployment**: Committed and pushed to GitHub (commit `6941704`), Vercel auto-deployed. All changes from this session: optimistic picks, opponent fade, full draw setup, country flags, title rebrand.
+
+### Code Cleanup (Mar 4, 2026)
+**Fixes**:
+- **Dead ternary in picks page** (`app/league/[id]/picks/page.tsx` line 259): Removed a nested ternary where both branches returned `'the current round'` — simplified to a static string.
+- **Hardcoded tournament ID in WTA script** (`scripts/update-iw-wta-r1.js`): Replaced hardcoded `cmma1xsji00088uuju4lwwiv9` with a dynamic query (`gender: 'WOMEN', year: 2026, level: 'WTA_1000'`), matching the ATP script pattern.
+
+### Live Win Probability Odds (Mar 4, 2026)
+**Goal**: Display live win-probability percentages next to each player on the picks page, sourced from Polymarket prediction markets, to help users make informed selections.
+
+**Data Source**: Polymarket Gamma API (completely free, no auth required)
+- Match slugs follow pattern: `{league}-{p1_last_7chars}-{p2_last_7chars}-{YYYY-MM-DD}`
+- Events can have multiple markets (match winner, Over/Under sets, game totals)
+- Must filter for match winner market by excluding "Over"/"Under"/"Yes"/"No" outcomes
+
+**Files Created**:
+- `lib/services/odds.ts` — Polymarket odds fetching service with slug construction, parallel batch fetching via `Promise.allSettled`, 10-minute in-memory cache, and accent-normalized player name matching
+
+**Files Modified**:
+- `components/player-grid.tsx` — Added `winPct` prop to `PlayerHalf` component, `matchOdds` prop to `PlayerGrid`; percentage shown as small gray text next to country name
+- `app/league/[id]/picks/page.tsx` — Server component fetches odds before render (only for unlocked rounds), passes to `PlayerGrid` as serialized prop
+
+**Coverage**: 16/32 WTA matches, 25/32 ATP matches show odds (remaining matches lack Polymarket markets). Matches without markets render normally with no percentage.
+
+**Key Design Decisions**:
+- Server-side fetching (not client-side) to avoid CORS and keep API calls off the client
+- Graceful degradation: odds fetch failure is non-critical, caught silently
+- No database changes needed — odds are transient display data
+- In-memory cache keyed by gender with 10-min TTL to avoid hammering the API
+
 ## Next Steps
-- Deploy latest changes (optimistic picks, opponent fade, full draw setup, country flags)
 - R2 match setup after R1 completes (Mar 5-6): auto-bracket from R1 results
 - Share league join links with test users
 - Enter match results via admin as tournament progresses
