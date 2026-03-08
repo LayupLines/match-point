@@ -82,13 +82,40 @@ export default async function LeaguePage({
     picksByRound.set(pick.roundId, names)
   }
 
+  // Determine which round's picks to show in standings
+  const now = new Date()
+  const rounds = league.tournament.rounds
+  const currentRoundIdx = rounds.findIndex(r => new Date(r.lockTime) > now)
+  // Show most recently locked round (where picks are finalized), or current round if none locked yet
+  const lastLockedIdx = currentRoundIdx > 0
+    ? currentRoundIdx - 1
+    : currentRoundIdx === -1
+    ? rounds.length - 1  // all locked → show last round
+    : -1  // none locked yet
+  const displayRound = lastLockedIdx >= 0
+    ? rounds[lastLockedIdx]
+    : currentRoundIdx >= 0
+    ? rounds[currentRoundIdx]
+    : undefined
+  const displayRoundId = displayRound?.id
+  const isDisplayRoundLocked = displayRound
+    ? new Date(displayRound.lockTime) <= now
+    : true
+
   // Get standings if user is a member
   const standings = membership
     ? await db.standings.findMany({
         where: { leagueId: id },
         include: {
           user: {
-            select: { name: true, email: true },
+            include: {
+              picks: displayRoundId
+                ? {
+                    where: { leagueId: id, roundId: displayRoundId },
+                    include: { player: { select: { name: true } } },
+                  }
+                : undefined,
+            },
           },
         },
         orderBy: [
@@ -165,17 +192,12 @@ export default async function LeaguePage({
               <div className="p-4 sm:p-6">
                 <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {(() => {
-                    const now = new Date()
-                    const currentRoundIndex = league.tournament.rounds.findIndex(
-                      r => new Date(r.lockTime) > now
-                    )
-
                     return league.tournament.rounds.map((round, index) => {
                       const lockTime = new Date(round.lockTime)
                       const isLocked = lockTime < now
                       const timeUntilLock = lockTime.getTime() - now.getTime()
                       const isClosingSoon = !isLocked && timeUntilLock < 2 * 24 * 60 * 60 * 1000
-                      const isFuture = !isLocked && currentRoundIndex >= 0 && index > currentRoundIndex
+                      const isFuture = !isLocked && currentRoundIdx >= 0 && index > currentRoundIdx
                       const roundPicks = picksByRound.get(round.id) ?? []
                       const picksComplete = roundPicks.length >= round.requiredPicks
 
@@ -330,6 +352,23 @@ export default async function LeaguePage({
                                 </span>
                               )}
                             </div>
+                            {displayRoundId && (() => {
+                              const canSeePicks = isCurrentUser || isDisplayRoundLocked
+                              const picks = standing.user.picks ?? []
+                              if (picks.length === 0) return null
+                              if (!canSeePicks) {
+                                return (
+                                  <p className="text-xs text-gray-400 mt-1 italic">
+                                    Picks revealed after round begins
+                                  </p>
+                                )
+                              }
+                              return (
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {picks.map((p: any) => p.player.name).join(', ')}
+                                </p>
+                              )
+                            })()}
                           </td>
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                             <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${

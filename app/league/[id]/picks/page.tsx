@@ -326,12 +326,14 @@ export default async function PicksPage({
                       {/* Status indicator */}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900 text-lg leading-tight">{pick.player.name}</p>
-                          {pick.player.seed && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full mt-1">
-                              <span>🏆</span> Seed {pick.player.seed}
-                            </span>
-                          )}
+                          <p className="font-medium text-gray-900 text-lg leading-tight flex items-center gap-1.5 min-w-0">
+                            <span className="truncate">{pick.player.name}</span>
+                            {pick.player.seed && (
+                              <span className="inline-flex items-center px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full shrink-0">
+                                Seed {pick.player.seed}
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
                             <img
                               src={getFlagPath(pick.player.country)}

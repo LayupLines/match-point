@@ -679,6 +679,10 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - ✅ Sticky progress bar — fixed bottom bar shows pick count and player names while scrolling
 - ✅ WTA draw updated with 24 real player names (13 qualifier placeholders remain)
 - ✅ How to Play modal — pop-up with pick rules and elimination context, portaled to body
+- ✅ Standings pick display — user picks shown under names in league standings with privacy (own picks always visible, others after lock)
+- ✅ R1 results entered for all 64 matches (ATP + WTA Indian Wells 2026) with special case handling (Lucky Loser, retirement, walkover)
+- ✅ R2 matches generated — 32 per tournament, correctly pairing R1 winners with bye seeds from official draw
+- ✅ Scoring triggered and standings updated after R1 results entry
 
 ### Documentation Update (Mar 1, 2026)
 **Goal**: Bring QUICKSTART.md and README.md up to date with all Phase 1–3 changes.
@@ -981,7 +985,125 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - No database changes needed — odds are transient display data
 - In-memory cache keyed by gender with 10-min TTL to avoid hammering the API
 
+### League Page Pick Status (Mar 4, 2026)
+**Goal**: Update league page round cards to reflect the user's pick status instead of always showing "3 picks required" / "Make Picks", serving as confirmation that picks have been entered.
+
+**Implementation** (`app/league/[id]/page.tsx`):
+- Added `db.pick.findMany` query for user's picks across all rounds, grouped into a `picksByRound` Map
+- Round cards now show three distinct states:
+  - **No picks**: "X picks required" (gray text), "Make Picks" button (solid green)
+  - **Partial picks**: "X of Y picks made" (orange text), player names listed in gray, "Continue Picks" button (solid green)
+  - **Complete picks**: "X picks submitted" (green text), player names listed in gray, "Edit Picks" button (green outline)
+- Green status dot: pulsing animation when incomplete, solid when all picks are in
+- Player names shown discreetly in small gray text below the status line
+
+**Deployment**: Committed and pushed to GitHub (commit `d3b4ba3`), Vercel auto-deployed.
+
+### Standings Pick Display (Mar 5, 2026)
+**Goal**: Show each user's player picks under their name in the standings table on the league page, with privacy: own picks always visible, others' picks only after the round locks.
+
+**Implementation** (`app/league/[id]/page.tsx`):
+- **Display round logic**: Computed before the standings query. Shows the most recently locked round's picks (not the current unlocked round). Falls back to current round if none are locked yet, or the last round if all are locked.
+- **Expanded standings query**: Nested Prisma `include` through `standings → user → picks` (filtered to display round), with player name select
+- **Privacy IIFE in JSX**: For each user in standings:
+  - Own picks (`isCurrentUser`): always visible
+  - Others' picks: only visible after `displayRound.lockTime` has passed
+  - Before lock for others: italic "Picks revealed after round begins"
+  - No picks: nothing shown
+- Picks displayed as comma-separated player names in small gray text under user name
+
+**Files Modified**:
+- `app/league/[id]/page.tsx` — Display round computation, expanded standings query, picks display with privacy logic
+
+### R1 Results Entry (Mar 6, 2026)
+**Goal**: Enter all 64 Round 1 match results for both ATP and WTA Indian Wells 2026.
+
+**Data Collection**:
+- ATP R1 results (32 matches): sourced from atptour.com
+- WTA R1 results (32 matches): sourced from liquipedia.net
+
+**Special Cases Handled**:
+- **Lucky Loser replacement (ATP BP5)**: Arthur Cazaux withdrew, replaced by Vit Kopriva. Script created Kopriva as a new player, updated BP5 match player, and recorded Kopriva as winner.
+- **Retirement (ATP BP21)**: Daniel Altmaier retired vs Miomir Kecmanovic — result entered with `retiredPlayerId`
+- **Walkover (WTA BP18)**: Rebecca Sramkova gave walkover to Katie Volynets — result entered with `isWalkover: true`
+
+**Script**: `scripts/enter-r1-results.js` — Bulk result entry via direct Prisma `match.update()` with matchId → winnerId mappings for all 64 matches. Results: 32 ATP + 32 WTA entered successfully, 0 errors.
+
+### R2 Match Generation (Mar 6, 2026)
+**Goal**: Set up Round 2 matches for both ATP and WTA tournaments, correctly pairing R1 winners with bye seeds based on the official draw structure.
+
+**Problem with naive approach**: The existing `pairWinnersForNextRound()` function pairs consecutive R1 winners against each other, producing only 16 matches. But ATP/WTA 1000 R2 should have 32 matches — each R1 winner faces a seeded bye player at the corresponding bracket position.
+
+**Implementation** (`scripts/generate-r2.js`):
+- Hardcoded seed maps derived from official IW 2026 draw PDFs: `ATP_R2_SEED_MAP` and `WTA_R2_SEED_MAP` — each maps R1 bracket position (1-32) to the seed number of the bye player that R1 winner faces in R2
+- Script queries R1 matches (with winners), builds a bye-players-by-seed lookup, then creates 32 R2 matches per tournament: bye seed as player1, R1 winner as player2, same bracket position
+- Cazaux (ATP) naturally excluded from R2 since he has no seed number
+
+**R2 Matches Created**:
+- ATP: 32 matches (e.g., BP1: [1] Alcaraz vs Dimitrov, BP32: [2] Sinner vs Svrcina)
+- WTA: 32 matches (e.g., BP1: [1] Sabalenka vs Sakatsume, BP32: [2] Swiatek vs Day)
+
+**Scoring Triggered**: Called `/api/cron/scoring` endpoint to recalculate standings for all active tournaments after R1 results were entered. Standings now reflect R1 pick outcomes (correct picks, strikes).
+
+**Current Tournament State** (as of Mar 6, 2026):
+- Round 1: Locked, all 64 results entered, scoring complete
+- Round 2: Active, 32 matches per tournament, lock time 18:00 UTC today
+- Rounds 3-7: Not yet open
+
+### R2 Results Entry (Mar 8, 2026)
+**Goal**: Enter all 64 R2 match results (32 ATP + 32 WTA) and set up R3.
+
+**Data Collection**:
+- ATP R2 results (32 matches): sourced from atptour.com draws + results pages
+- WTA R2 results (32 matches): sourced from tennisexplorer.com + liquipedia.net (cross-verified)
+
+**Special Cases Handled**:
+- **Walkover (ATP BP2)**: Rinderknech def. J.M. Cerundolo via walkover — result entered with `isWalkover: true`
+
+**Notable Upsets**:
+- ATP: Hijikata def. Darderi [20], Kovacevic def. Moutet [31], Baez def. Lehecka [22], Michelsen def. Humbert [32], Fucsovics def. Musetti [5], Diallo def. Rublev [17], Fonseca def. Khachanov [16], Shapovalov def. Etcheverry [29]
+- WTA: Cristian def. Joint [29], Osorio def. Jovic [18], Cirstea def. Shnaider [21], Gibson def. Alexandrova [11], Tomljanovic def. Wang [30], Kartal def. Navarro [20], Siniakova def. Fernandez [27], Krueger def. Samsonova [19], Ruzic def. Zheng [24]
+
+**Script**: `scripts/enter-r2-results.js` — Uses matchId → winner position (1 or 2) mapping, fetches each match to resolve player IDs dynamically. Results: 32 ATP + 32 WTA entered successfully, 0 errors.
+
+### R3 Match Generation (Mar 8, 2026)
+**Goal**: Generate Round 3 matches from R2 results using standard bracket pairing.
+
+**Implementation** (`scripts/generate-r3.js`):
+- Standard bracket pairing: consecutive R2 winners paired together (BP1 winner vs BP2 winner → R3 BP1, etc.)
+- No bye seeds involved from R3 onward — straightforward `pairWinnersForNextRound()` logic
+- 32 R2 matches → 16 R3 matches per tournament
+
+**R3 Matches Created**:
+- ATP: 16 matches (e.g., BP1: [1] Alcaraz vs [26] Rinderknech, BP16: Shapovalov vs [2] Sinner)
+- WTA: 16 matches (e.g., BP1: [1] Sabalenka vs Cristian, BP16: [32] Sakkari vs [2] Swiatek)
+
+**Scoring Triggered**: Called `/api/cron/scoring` endpoint — recalculated standings for all 3 active tournaments.
+
+**Verified**: R3 showing as active on league page with correct matchups, "Make Picks" button enabled, closing countdown visible.
+
+**Current Tournament State** (as of Mar 8, 2026):
+- Round 1: Locked, all 64 results entered, scoring complete
+- Round 2: Locked, all 64 results entered, scoring complete
+- Round 3: Active, 16 matches per tournament, lock time 18:00 UTC Mar 8
+- Rounds 4-7 (Ro16 through Final): Not yet open
+
+### Seed Badge UI Improvement (Mar 8, 2026)
+**Goal**: Fix visual imbalance on picks page when one player is seeded and the other isn't.
+
+**Problem**: Seed badges ("🏆 Seed N") rendered on a separate line below the player name, causing seeded player cards to be taller than unseeded ones — uneven layout.
+
+**Changes**:
+- Moved seed badge inline to the right of the player name (same line) using flex layout
+- Removed trophy emoji (🏆) — unnecessary clutter
+- Added `truncate` on player name and `shrink-0` on seed badge so long names truncate gracefully without collapsing the badge
+
+**Files Modified**:
+- `components/player-grid.tsx` — 3 locations: PlayerHalf component, bye players section, flat player grid
+- `app/league/[id]/picks/page.tsx` — 1 location: locked picks display
+
 ## Next Steps
-- R2 match setup after R1 completes (Mar 5-6): auto-bracket from R1 results
-- Share league join links with test users
-- Enter match results via admin as tournament progresses
+- Enter R3 results as matches complete (Mar 9-10)
+- Auto-generate R4 (Round of 16) matches from R3 results
+- Continue advancing rounds through the tournament
+- Share league join links with additional test users

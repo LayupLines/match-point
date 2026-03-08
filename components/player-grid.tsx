@@ -45,13 +45,14 @@ function PlayerHalf({
     <div className={`flex-1 p-4 transition-opacity duration-300 ${isPicked ? 'bg-wimbledon-green/5' : ''} ${opponentPicked ? 'opacity-40' : ''}`}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 leading-tight mb-1 truncate">{player.name}</p>
-          {player.seed && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full">
-              <span>🏆</span>
-              <span>Seed {player.seed}</span>
-            </span>
-          )}
+          <p className="font-medium text-gray-900 leading-tight mb-1 flex items-center gap-1.5 min-w-0">
+            <span className="truncate">{player.name}</span>
+            {player.seed && (
+              <span className="inline-flex items-center px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full shrink-0">
+                Seed {player.seed}
+              </span>
+            )}
+          </p>
           <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
             <img
               src={getFlagPath(player.country)}
@@ -353,13 +354,14 @@ export function PlayerGrid({
                       >
                         <div className="flex items-start justify-between mb-1">
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-700 leading-tight mb-1 truncate">{player.name}</p>
-                            {player.seed && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full">
-                                <span>🏆</span>
-                                <span>Seed {player.seed}</span>
-                              </span>
-                            )}
+                            <p className="font-medium text-gray-700 leading-tight mb-1 flex items-center gap-1.5 min-w-0">
+                              <span className="truncate">{player.name}</span>
+                              {player.seed && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full shrink-0">
+                                  Seed {player.seed}
+                                </span>
+                              )}
+                            </p>
                           </div>
                         </div>
                         <p className="text-xs text-gray-400 mt-1.5 font-medium uppercase tracking-wider">BYE</p>
@@ -393,13 +395,14 @@ export function PlayerGrid({
                     )}
                     <div className="flex items-start justify-between mb-3 relative z-10">
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900 leading-tight mb-1">{player.name}</p>
-                        {player.seed && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full mt-1">
-                            <span>🏆</span>
-                            <span>Seed {player.seed}</span>
-                          </span>
-                        )}
+                        <p className="font-medium text-gray-900 leading-tight mb-1 flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{player.name}</span>
+                          {player.seed && (
+                            <span className="inline-flex items-center px-2 py-0.5 bg-wimbledon-purple/10 text-wimbledon-purple text-xs rounded-full shrink-0">
+                              Seed {player.seed}
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
                           <img
                             src={getFlagPath(player.country)}
