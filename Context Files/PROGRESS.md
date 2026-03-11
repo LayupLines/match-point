@@ -1102,8 +1102,31 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 - `components/player-grid.tsx` — 3 locations: PlayerHalf component, bye players section, flat player grid
 - `app/league/[id]/picks/page.tsx` — 1 location: locked picks display
 
+### Quarterfinal Advancement (Mar 11, 2026)
+**Goal**: Advance the bracket from R3 through to QF based on known quarterfinal matchups.
+
+**Process**: Created `scripts/advance-to-qf.js` — a single consolidated script that performs 4 steps:
+1. **Enter R3 results** (32 matches: 16 ATP + 16 WTA) — winners determined by working backwards from known QF matchups; for undetermined R3 matches (where loser doesn't affect QF), used higher seed as default placeholder
+2. **Generate R4 (Ro16)** (16 matches: 8 ATP + 8 WTA) — standard bracket pairing of consecutive R3 winners
+3. **Enter R4 results** (16 matches: 8 ATP + 8 WTA) — all determined by QF matchups
+4. **Generate QF** (8 matches: 4 ATP + 4 WTA) — standard bracket pairing of R4 winners
+
+**Resulting QF Matchups**:
+- ATP: [1] Alcaraz vs [27] Norrie, [3] Djokovic vs [11] Medvedev, [30] Fils vs [4] Zverev, [25] Tien vs [2] Sinner
+- WTA: [1] Sabalenka vs [10] Mboko, [14] Noskova vs Gibson, [5] Pegula vs [3] Rybakina, [9] Svitolina vs [2] Swiatek
+
+**Files Created**:
+- `scripts/advance-to-qf.js` — consolidated advancement script with hardcoded match IDs and winner positions
+
+**Current Tournament State** (as of Mar 11, 2026):
+- Rounds 1-4: Locked, all results entered, scoring complete
+- Quarterfinals: Active, 4 matches per tournament, lock time Mar 12 17:00 UTC
+- Semifinals/Final: Not yet open
+
+**Note**: Some R3/R4 results used higher-seed defaults for matches whose outcomes don't affect QF matchups. These can be corrected later if needed.
+
 ## Next Steps
-- Enter R3 results as matches complete (Mar 9-10)
-- Auto-generate R4 (Round of 16) matches from R3 results
-- Continue advancing rounds through the tournament
+- Enter QF results as matches complete (Mar 12-13)
+- Generate SF matches from QF results
+- Continue advancing through SF → Final
 - Share league join links with additional test users

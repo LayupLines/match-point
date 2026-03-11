@@ -54,6 +54,8 @@ const NON_WINNER_OUTCOMES = /^(over|under|yes|no)\b/i
 function findMatchWinnerMarket(
   markets: Array<{ outcomes?: string; outcomePrices?: string }>,
 ): { outcomes: string[]; prices: string[] } | null {
+  let fallback: { outcomes: string[]; prices: string[] } | null = null
+
   for (const market of markets) {
     const outcomes: string[] = JSON.parse(market.outcomes || '[]')
     const prices: string[] = JSON.parse(market.outcomePrices || '[]')
@@ -62,11 +64,20 @@ function findMatchWinnerMarket(
 
     // Match winner markets have player names, not "Over"/"Under"/"Yes"/"No"
     const isNonWinner = outcomes.some(o => NON_WINNER_OUTCOMES.test(o.trim()))
-    if (!isNonWinner) {
+    if (isNonWinner) continue
+
+    // Prefer markets with full names (contain spaces = "First Last") for reliable matching
+    const hasFullNames = outcomes.every(o => o.trim().includes(' '))
+    if (hasFullNames) {
       return { outcomes, prices }
     }
+
+    // Keep first last-name-only market as fallback
+    if (!fallback) {
+      fallback = { outcomes, prices }
+    }
   }
-  return null
+  return fallback
 }
 
 /**
@@ -122,29 +133,41 @@ export async function fetchMatchOdds(
 
   const league = gender === 'MEN' ? 'atp' : 'wta'
 
-  // Use today's date for slug construction (matches are for the current day)
-  const today = new Date().toISOString().split('T')[0]
+  // Try today + next 2 days for slug construction (Polymarket uses match date, not listing date)
+  const datesToTry: string[] = []
+  for (let d = 0; d <= 2; d++) {
+    const date = new Date()
+    date.setDate(date.getDate() + d)
+    datesToTry.push(date.toISOString().split('T')[0])
+  }
 
-  // Build slugs and fetch in parallel
-  const slugMap = new Map<string, string>() // slug → matchId
-  const slugs: string[] = []
+  // Build slugs for each match × each date, fetch in parallel
+  type SlugEntry = { slug: string; matchId: string }
+  const slugEntries: SlugEntry[] = []
 
   for (const match of matches) {
-    const slug = buildMatchSlug(league, match.player1Name, match.player2Name, today)
-    slugMap.set(slug, match.id)
-    slugs.push(slug)
+    for (const dateStr of datesToTry) {
+      slugEntries.push({
+        slug: buildMatchSlug(league, match.player1Name, match.player2Name, dateStr),
+        matchId: match.id,
+      })
+    }
   }
 
   const results = await Promise.allSettled(
-    slugs.map(slug => fetchSlugOdds(slug))
+    slugEntries.map(e => fetchSlugOdds(e.slug))
   )
 
   // Build odds map keyed by a normalized player name pair for flexible matching
+  // First successful hit per match wins (avoids duplicates from multi-date attempts)
   const oddsData = new Map<string, OddsResult>()
-  slugs.forEach((slug, i) => {
+  const seenMatches = new Set<string>()
+  slugEntries.forEach((entry, i) => {
+    if (seenMatches.has(entry.matchId)) return // already found odds for this match
     const result = results[i]
     if (result.status === 'fulfilled' && result.value) {
       const odds = result.value
+      seenMatches.add(entry.matchId)
       // Key by normalized player names from the API response (most reliable)
       const key = normalizeOddsKey(odds.player1Name, odds.player2Name)
       oddsData.set(key, odds)
